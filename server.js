@@ -769,8 +769,8 @@ function generateRequestId() {
   return Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
 }
 
-// Start HTTP server
-app.listen(PORT, () => {
+// Start HTTP server (bind to all interfaces for PaaS platforms like Railway)
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Maijjd Intelligent API Server running on port ${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
   console.log(`🔍 Health Check: http://localhost:${PORT}/api/health`);
@@ -780,8 +780,12 @@ app.listen(PORT, () => {
   console.log(`📊 Performance: Compression and caching enabled`);
 });
 
-// HTTPS Server Setup (if SSL certificates are available)
+// HTTPS Server Setup (optional: only if explicitly enabled and certificates are available)
 const setupHTTPS = () => {
+  if (process.env.ENABLE_HTTPS !== 'true') {
+    console.log('⚠️  HTTPS disabled (set ENABLE_HTTPS=true to enable)');
+    return;
+  }
   try {
     const privateKey = fs.readFileSync('../ssl/private.key', 'utf8');
     const certificate = fs.readFileSync('../ssl/certificate.crt', 'utf8');
@@ -791,7 +795,7 @@ const setupHTTPS = () => {
       cert: certificate
     }, app);
     
-    httpsServer.listen(HTTPS_PORT, () => {
+    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
       console.log(`🔐 Maijjd HTTPS Server running on port ${HTTPS_PORT}`);
       console.log(`🔒 Secure API: https://localhost:${HTTPS_PORT}/api`);
     });
