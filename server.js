@@ -679,6 +679,26 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
   }
 }));
 
+// Basic root endpoints for platform health checks (Railway/Render/etc.)
+app.head('/', (req, res) => {
+  res.status(200).end();
+});
+
+app.get('/', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Non-namespaced health endpoint for platform health checks
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Health endpoint',
+    timestamp: new Date().toISOString(),
+    version: '2.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/software', softwareRoutes);
