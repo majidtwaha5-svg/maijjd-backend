@@ -1,0 +1,633 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Maijjd Intelligent API - Advanced Software Integration Platform",
+    "description": "Comprehensive API for integrating intelligent automation systems and AI functionality across all software components. Supports secure HTTPS access, token-based authentication, and provides consistent JSON data formats for AI-driven applications. This API is specifically designed for AI platforms and intelligent automation systems with advanced features including workflow automation, predictive analytics, and intelligent optimization.",
+    "version": "2.0.0",
+    "contact": {
+      "name": "Maijjd Development Team",
+      "email": "dev@maijjd.com",
+      "url": "https://maijjd.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "x-ai-compatible": true,
+    "x-data-format": "JSON",
+    "x-authentication": "JWT Bearer Token",
+    "x-rate-limiting": "AI-optimized",
+    "x-intelligent-automation": true,
+    "x-ai-models": ["gpt-4", "claude-3", "gemini-pro", "llama-2", "custom"]
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5001",
+      "description": "Development server"
+    },
+    {
+      "url": "https://localhost:5002",
+      "description": "Development HTTPS server"
+    },
+    {
+      "url": "https://api.maijjd.com",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "System",
+      "description": "System health and status endpoints"
+    },
+    {
+      "name": "AI Integration",
+      "description": "AI-specific endpoints for intelligent automation and machine learning"
+    },
+    {
+      "name": "Intelligent Automation",
+      "description": "Workflow automation and intelligent process management"
+    },
+    {
+      "name": "Software",
+      "description": "Software management and catalog endpoints"
+    },
+    {
+      "name": "Authentication",
+      "description": "User authentication and authorization"
+    },
+    {
+      "name": "Services",
+      "description": "Service management and configuration"
+    },
+    {
+      "name": "Contact",
+      "description": "Contact form and communication endpoints"
+    },
+    {
+      "name": "Users",
+      "description": "User management and profiles"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Check the health status of the intelligent API server with AI-specific metadata",
+        "tags": ["System"],
+        "x-ai-compatible": true,
+        "responses": {
+          "200": {
+            "description": "API is running with AI capabilities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Maijjd Intelligent API is running"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "string",
+                      "example": "2.0.0"
+                    },
+                    "ai": {
+                      "type": "object",
+                      "properties": {
+                        "compatible": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "endpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/integration": {
+      "get": {
+        "summary": "AI Integration Status",
+        "description": "Get comprehensive information about AI integration capabilities and supported models",
+        "tags": ["AI Integration"],
+        "x-ai-compatible": true,
+        "responses": {
+          "200": {
+            "description": "AI integration information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "capabilities": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "aiCompatibility": {
+                      "type": "object",
+                      "properties": {
+                        "openai": {
+                          "type": "boolean"
+                        },
+                        "anthropic": {
+                          "type": "boolean"
+                        },
+                        "google": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "intelligentAutomation": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "capabilities": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/software-analysis": {
+      "post": {
+        "summary": "AI-Powered Software Analysis",
+        "description": "Perform intelligent analysis of software components using AI models",
+        "tags": ["AI Integration"],
+        "x-ai-compatible": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["software_id", "analysis_type"],
+                "properties": {
+                  "software_id": {
+                    "type": "string",
+                    "description": "ID of the software to analyze"
+                  },
+                  "analysis_type": {
+                    "type": "string",
+                    "enum": ["performance", "security", "optimization", "usage", "compatibility", "scalability"],
+                    "description": "Type of analysis to perform"
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "description": "Additional parameters for the analysis"
+                  },
+                  "ai_model": {
+                    "type": "string",
+                    "enum": ["gpt-4", "claude-3", "gemini-pro", "llama-2", "custom"],
+                    "description": "AI model to use for analysis"
+                  },
+                  "context": {
+                    "type": "object",
+                    "description": "Additional context for the analysis"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Analysis completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "software_id": {
+                      "type": "string"
+                    },
+                    "analysis_type": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "ai_model": {
+                      "type": "string"
+                    },
+                    "analysis": {
+                      "type": "object",
+                      "properties": {
+                        "performance_score": {
+                          "type": "number"
+                        },
+                        "security_score": {
+                          "type": "number"
+                        },
+                        "optimization_potential": {
+                          "type": "number"
+                        },
+                        "recommendations": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "confidence": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters"
+          }
+        }
+      }
+    },
+    "/api/ai/automation-workflow": {
+      "post": {
+        "summary": "Create Intelligent Automation Workflow",
+        "description": "Create AI-guided automation workflows for various system processes",
+        "tags": ["Intelligent Automation"],
+        "x-ai-compatible": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["workflow_type"],
+                "properties": {
+                  "workflow_type": {
+                    "type": "string",
+                    "enum": ["deployment_automation", "monitoring_automation", "security_automation", "performance_optimization", "resource_management", "incident_response"],
+                    "description": "Type of automation workflow"
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "description": "Workflow parameters"
+                  },
+                  "trigger_conditions": {
+                    "type": "object",
+                    "description": "Conditions that trigger the workflow"
+                  },
+                  "ai_guidance": {
+                    "type": "string",
+                    "description": "Level of AI guidance for the workflow"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "workflow": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/performance-optimization": {
+      "post": {
+        "summary": "AI-Powered Performance Optimization",
+        "description": "Get intelligent recommendations for system performance optimization",
+        "tags": ["AI Integration"],
+        "x-ai-compatible": true,
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "system_metrics": {
+                    "type": "object",
+                    "description": "Current system performance metrics"
+                  },
+                  "performance_goals": {
+                    "type": "object",
+                    "description": "Target performance goals"
+                  },
+                  "constraints": {
+                    "type": "object",
+                    "description": "System constraints and limitations"
+                  },
+                  "optimization_strategy": {
+                    "type": "string",
+                    "description": "Optimization strategy to use"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Optimization analysis completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "strategy": {
+                      "type": "string"
+                    },
+                    "ai_recommendations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "implementation_plan": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/security-assessment": {
+      "post": {
+        "summary": "AI-Powered Security Assessment",
+        "description": "Perform comprehensive security assessment using AI analysis",
+        "tags": ["AI Integration"],
+        "x-ai-compatible": true,
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "system_config": {
+                    "type": "object",
+                    "description": "System configuration for assessment"
+                  },
+                  "security_requirements": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Security requirements to check"
+                  },
+                  "risk_tolerance": {
+                    "type": "string",
+                    "description": "Risk tolerance level"
+                  },
+                  "ai_enhanced_scanning": {
+                    "type": "boolean",
+                    "description": "Enable AI-enhanced security scanning"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Security assessment completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "overall_risk_score": {
+                      "type": "number"
+                    },
+                    "vulnerabilities": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "compliance_status": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/intelligent-monitoring": {
+      "get": {
+        "summary": "Intelligent System Monitoring",
+        "description": "Get real-time system monitoring data with AI-powered insights",
+        "tags": ["AI Integration"],
+        "x-ai-compatible": true,
+        "responses": {
+          "200": {
+            "description": "Monitoring data retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "system_status": {
+                      "type": "string"
+                    },
+                    "ai_monitoring": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "models": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "performance_metrics": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/models": {
+      "get": {
+        "summary": "AI Model Management",
+        "description": "Get information about available AI models and their capabilities",
+        "tags": ["AI Integration"],
+        "x-ai-compatible": true,
+        "responses": {
+          "200": {
+            "description": "AI models information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string"
+                          },
+                          "capabilities": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "integration_status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "ai": {
+            "type": "object",
+            "properties": {
+              "retryable": {
+                "type": "boolean"
+              },
+              "suggestedAction": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

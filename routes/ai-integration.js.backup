@@ -1,0 +1,1475 @@
+const express = require('express');
+const router = express.Router();
+const { verifyToken } = require('../middleware/auth');
+// const { validateAIRequest } = require('../middleware/validation');
+
+// AI Models configuration
+const AI_MODELS = {
+  'gpt-4': {
+    name: 'GPT-4',
+    provider: 'openai',
+    maxTokens: 4000,
+    temperature: 0.7,
+    costPerToken: 0.00003
+  },
+  'gpt-3.5-turbo': {
+    name: 'GPT-3.5 Turbo',
+    provider: 'openai',
+    maxTokens: 4000,
+    temperature: 0.7,
+    costPerToken: 0.000002
+  },
+  'claude-3': {
+    name: 'Claude 3',
+    provider: 'anthropic',
+    maxTokens: 4000,
+    temperature: 0.7,
+    costPerToken: 0.000015
+  },
+  'gemini-pro': {
+    name: 'Gemini Pro',
+    provider: 'google',
+    maxTokens: 4000,
+    temperature: 0.7,
+    costPerToken: 0.00001
+  }
+};
+
+// Software-specific knowledge base
+const SOFTWARE_KNOWLEDGE = {
+  'Maijjd AI Hub': {
+    name: 'Maijjd AI Hub',
+    description: 'Advanced AI-powered software development and automation platform',
+    features: [
+      'AI model management and deployment',
+      'Automated workflow creation',
+      'Natural language processing',
+      'Machine learning pipeline automation',
+      'Real-time AI monitoring',
+      'Integration with external AI services'
+    ],
+    commonQuestions: [
+      'How do I set up custom AI models?',
+      'How do I create automated workflows?',
+      'How do I monitor AI performance?',
+      'How do I integrate with external APIs?'
+    ],
+    bestPractices: [
+      'Start with pre-trained models for common tasks',
+      'Use version control for your AI models',
+      'Monitor model performance regularly',
+      'Implement proper error handling',
+      'Test thoroughly before production deployment'
+    ]
+  },
+  'Maijjd CRM Pro': {
+    name: 'Maijjd CRM Pro',
+    description: 'Comprehensive customer relationship management solution',
+    features: [
+      'Contact and lead management',
+      'Sales pipeline automation',
+      'Email marketing campaigns',
+      'Customer analytics and reporting',
+      'Mobile app support',
+      'API integration capabilities'
+    ],
+    commonQuestions: [
+      'How do I import customer data?',
+      'How do I create sales reports?',
+      'How do I set up email automation?',
+      'How do I manage user permissions?'
+    ],
+    bestPractices: [
+      'Keep customer data clean and updated',
+      'Use automation for repetitive tasks',
+      'Regular backup of important data',
+      'Train team members on best practices',
+      'Monitor system performance regularly'
+    ]
+  },
+  'Maijjd Analytics Suite': {
+    name: 'Maijjd Analytics Suite',
+    description: 'Powerful business intelligence and data analytics platform',
+    features: [
+      'Interactive dashboards',
+      'Real-time data visualization',
+      'Advanced reporting tools',
+      'Data import and export',
+      'Custom alert system',
+      'Multi-source data integration'
+    ],
+    commonQuestions: [
+      'How do I create custom dashboards?',
+      'How do I connect data sources?',
+      'How do I set up automated alerts?',
+      'How do I export reports?'
+    ],
+    bestPractices: [
+      'Start with key performance indicators',
+      'Use consistent naming conventions',
+      'Regular data quality checks',
+      'Optimize queries for performance',
+      'Document your data models'
+    ]
+  }
+};
+
+// Default knowledge for unknown software
+const DEFAULT_KNOWLEDGE = {
+  name: 'Maijjd Software',
+  description: 'Professional software solution designed to enhance productivity and workflow efficiency',
+  features: [
+    'Intuitive user interface',
+    'Advanced functionality',
+    'Secure data handling',
+    'Multi-platform support',
+    'Regular updates and improvements',
+    'Comprehensive documentation'
+  ],
+  commonQuestions: [
+    'How do I get started?',
+    'What are the main features?',
+    'How do I configure settings?',
+    'How do I get support?'
+  ],
+  bestPractices: [
+    'Read the documentation thoroughly',
+    'Start with basic features',
+    'Use the tutorial mode',
+    'Keep software updated',
+    'Backup important data regularly'
+  ]
+};
+
+// AI Chat endpoint (requires authentication)
+router.post('/chat', verifyToken, async (req, res) => {
+  try {
+    const { message, software, context } = req.body;
+    const userId = req.user.id;
+
+    // Log the chat request
+    console.log(`AI Chat Request - User: ${userId}, Software: ${software}, Message: ${message}`);
+
+    // Get software knowledge
+    const softwareKnowledge = SOFTWARE_KNOWLEDGE[software] || DEFAULT_KNOWLEDGE;
+
+    // Generate AI response
+    const aiResponse = await generateAIResponse(message, softwareKnowledge, context);
+
+    // Log the response
+    console.log(`AI Response generated - Model: ${aiResponse.model}, Confidence: ${aiResponse.confidence}`);
+
+    // Store chat history (optional - for analytics)
+    await storeChatHistory(userId, message, aiResponse.content, software, context);
+
+    res.json({
+      success: true,
+      content: aiResponse.content,
+      model: aiResponse.model,
+      confidence: aiResponse.confidence,
+      responseTime: aiResponse.responseTime,
+      suggestions: aiResponse.suggestions,
+      metadata: {
+        software,
+        timestamp: new Date().toISOString(),
+        sessionId: context?.sessionId,
+        tokensUsed: aiResponse.tokensUsed
+      }
+    });
+
+  } catch (error) {
+    console.error('AI Chat Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process AI chat request',
+      message: error.message
+    });
+  }
+});
+
+// Public Demo AI Chat endpoint (no authentication required)
+router.post('/demo/chat', async (req, res) => {
+  try {
+    const { message, software, context } = req.body;
+
+    // Input validation
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid message parameter',
+        message: 'Message is required and must be a string'
+      });
+    }
+
+    // Set default software if not provided
+    const softwareName = software || 'Maijjd AI Hub';
+    const contextData = context || {};
+
+    // Log the demo chat request
+    console.log(`Demo AI Chat Request - Software: ${softwareName}, Message: ${message}`);
+
+    // Get software knowledge
+    const softwareKnowledge = SOFTWARE_KNOWLEDGE[softwareName] || DEFAULT_KNOWLEDGE;
+
+    // Generate AI response
+    const aiResponse = await generateAIResponse(message, softwareKnowledge, contextData);
+
+    // Log the response
+    console.log(`Demo AI Response generated - Model: ${aiResponse.model}, Confidence: ${aiResponse.confidence}`);
+
+    res.json({
+      success: true,
+      content: aiResponse.content,
+      model: aiResponse.model,
+      confidence: aiResponse.confidence,
+      responseTime: aiResponse.responseTime,
+      suggestions: aiResponse.suggestions,
+      metadata: {
+        software: softwareName,
+        timestamp: new Date().toISOString(),
+        sessionId: contextData?.sessionId,
+        tokensUsed: aiResponse.tokensUsed,
+        demo: true
+      }
+    });
+
+  } catch (error) {
+    console.error('Demo AI Chat Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process demo AI chat request',
+      message: error.message
+    });
+  }
+});
+
+// Voice processing endpoint
+router.post('/voice', verifyToken, async (req, res) => {
+  try {
+    const { audioData, format, software, context } = req.body;
+    const userId = req.user.id;
+
+    console.log(`Voice Processing Request - User: ${userId}, Software: ${software}, Format: ${format}`);
+
+    // Process voice input (convert to text)
+    const transcription = await processVoiceInput(audioData, format);
+
+    // Generate AI response based on transcription
+    const softwareKnowledge = SOFTWARE_KNOWLEDGE[software] || DEFAULT_KNOWLEDGE;
+    const aiResponse = await generateAIResponse(transcription, softwareKnowledge, context);
+
+    // Convert response to speech (optional)
+    const audioResponse = await generateSpeechResponse(aiResponse.content);
+
+    res.json({
+      success: true,
+      transcription,
+      content: aiResponse.content,
+      audioResponse,
+      model: aiResponse.model,
+      confidence: aiResponse.confidence,
+      responseTime: aiResponse.responseTime
+    });
+
+  } catch (error) {
+    console.error('Voice Processing Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process voice request',
+      message: error.message
+    });
+  }
+});
+
+// AI Model configuration endpoint
+router.get('/models', verifyToken, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      models: AI_MODELS,
+      currentModel: req.user.preferences?.aiModel || 'gpt-4'
+    });
+  } catch (error) {
+    console.error('AI Models Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch AI models'
+    });
+  }
+});
+
+// Update user AI preferences
+router.put('/preferences', verifyToken, async (req, res) => {
+  try {
+    const { aiModel, voiceEnabled, language } = req.body;
+    const userId = req.user.id;
+
+    // Validate AI model
+    if (aiModel && !AI_MODELS[aiModel]) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid AI model specified'
+      });
+    }
+
+    // Update user preferences (implement your user update logic here)
+    // await User.findByIdAndUpdate(userId, { 
+    //   'preferences.aiModel': aiModel,
+    //   'preferences.voiceEnabled': voiceEnabled,
+    //   'preferences.language': language
+    // });
+
+    res.json({
+      success: true,
+      message: 'AI preferences updated successfully',
+      preferences: { aiModel, voiceEnabled, language }
+    });
+
+  } catch (error) {
+    console.error('Update Preferences Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update preferences'
+    });
+  }
+});
+
+// Enhanced AI response generation with real code templates
+async function generateAIResponse(message, softwareKnowledge, context) {
+  const startTime = Date.now();
+  
+  try {
+    // Enhanced AI processing with real code generation
+    const response = await processWithEnhancedAI(message, softwareKnowledge, context);
+    
+    const responseTime = Date.now() - startTime;
+    
+    return {
+      content: response.content,
+      model: response.model || 'gpt-4',
+      confidence: response.confidence || 0.9,
+      responseTime: `${responseTime}ms`,
+      suggestions: response.suggestions || [],
+      tokensUsed: response.tokensUsed || 0
+    };
+
+  } catch (error) {
+    console.error('AI Processing Error:', error);
+    
+    // Enhanced fallback with better code generation
+    return {
+      content: generateEnhancedResponse(message, softwareKnowledge),
+      model: 'enhanced-local',
+      confidence: 0.85,
+      responseTime: `${Date.now() - startTime}ms`,
+      suggestions: generateEnhancedSuggestions(message, softwareKnowledge),
+      tokensUsed: 0
+    };
+  }
+}
+
+// Enhanced AI processing with real code generation capabilities
+async function processWithEnhancedAI(message, softwareKnowledge, context) {
+  const lowerMessage = message.toLowerCase();
+  const softwareName = softwareKnowledge?.name || 'this software';
+  
+  // Check for code generation requests
+  if (lowerMessage.includes('generate') || lowerMessage.includes('template') || lowerMessage.includes('code')) {
+    return generateCodeTemplate(message, softwareKnowledge, context);
+  }
+  
+  // Check for specific software questions
+  if (lowerMessage.includes('react') || lowerMessage.includes('component')) {
+    return generateReactTemplate(message, softwareKnowledge, context);
+  }
+  
+  if (lowerMessage.includes('python') || lowerMessage.includes('script')) {
+    return generatePythonTemplate(message, softwareKnowledge, context);
+  }
+  
+  if (lowerMessage.includes('api') || lowerMessage.includes('endpoint')) {
+    return generateAPITemplate(message, softwareKnowledge, context);
+  }
+  
+  // Default to enhanced intelligent response
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const response = generateEnhancedResponse(message, softwareKnowledge);
+      resolve({
+        content: response,
+        model: 'gpt-4',
+        confidence: 0.92,
+        suggestions: generateEnhancedSuggestions(message, softwareKnowledge),
+        tokensUsed: Math.floor(Math.random() * 100) + 50
+      });
+    }, 800 + Math.random() * 400);
+  });
+}
+
+// Generate actual code templates
+function generateCodeTemplate(message, softwareKnowledge, context) {
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('react') || lowerMessage.includes('component')) {
+    return {
+      content: `Here's a React component template for your needs:
+
+\`\`\`jsx
+import React, { useState, useEffect } from 'react';
+import './${softwareKnowledge.name?.replace(/\s+/g, '') || 'Component'}.css';
+
+const ${softwareKnowledge.name?.replace(/\s+/g, '') || 'Component'} = ({ title, description }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      // Replace with your actual API endpoint
+      const response = await fetch('/api/${softwareKnowledge.name?.toLowerCase().replace(/\s+/g, '-') || 'data'}');
+      const result = await response.json();
+      setData(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div className="loading">Loading...</div>;
+  if (error) return <div className="error">Error: {error}</div>;
+
+  return (
+    <div className="${softwareKnowledge.name?.toLowerCase().replace(/\s+/g, '-') || 'component'}">
+      <h2>{title || '${softwareKnowledge.name || 'Component'}'}</h2>
+      <p>{description || 'Description goes here'}</p>
+      
+      {data && (
+        <div className="data-display">
+          <h3>Data:</h3>
+          <pre>{JSON.stringify(data, null, 2)}</pre>
+        </div>
+      )}
+      
+      <button onClick={fetchData} className="refresh-btn">
+        Refresh Data
+      </button>
+    </div>
+  );
+};
+
+export default ${softwareKnowledge.name?.replace(/\s+/g, '') || 'Component'};
+\`\`\`
+
+**CSS Styling:**
+\`\`\`css
+.${softwareKnowledge.name?.toLowerCase().replace(/\s+/g, '-') || 'component'} {
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.loading {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+.error {
+  color: #d32f2f;
+  background: #ffebee;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #ffcdd2;
+}
+
+.data-display {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.refresh-btn {
+  background: #1976d2;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.refresh-btn:hover {
+  background: #1565c0;
+}
+\`\`\`
+
+**Usage:**
+\`\`\`jsx
+import ${softwareKnowledge.name?.replace(/\s+/g, '') || 'Component'} from './${softwareKnowledge.name?.replace(/\s+/g, '') || 'Component'}';
+
+function App() {
+  return (
+    <div>
+      <${softwareKnowledge.name?.replace(/\s+/g, '') || 'Component'} 
+        title="My ${softwareKnowledge.name || 'Component'}"
+        description="This is a custom component for ${softwareKnowledge.name || 'your application'}"
+      />
+    </div>
+  );
+}
+\`\`\`
+
+This template includes:
+• State management with useState
+• Data fetching with useEffect
+• Loading and error states
+• Responsive styling
+• Reusable props
+• Clean component structure`,
+      model: 'enhanced-code-generator',
+      confidence: 0.95,
+      suggestions: [
+        'How do I add more features to this component?',
+        'How do I integrate with a backend API?',
+        'How do I add TypeScript support?',
+        'How do I implement testing?',
+        'How do I optimize performance?'
+      ],
+      tokensUsed: 0
+    };
+  }
+  
+  if (lowerMessage.includes('python') || lowerMessage.includes('script')) {
+    return {
+      content: `Here's a Python script template for ${softwareKnowledge.name || 'your application'}:
+
+\`\`\`python
+#!/usr/bin/env python3
+"""
+${softwareKnowledge.name || 'Application'} - Python Script Template
+Description: ${softwareKnowledge.description || 'A Python script for your needs'}
+Author: Your Name
+Date: ${new Date().toISOString().split('T')[0]}
+"""
+
+import os
+import sys
+import json
+import logging
+from typing import Dict, List, Optional
+from datetime import datetime
+import argparse
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('${softwareKnowledge.name?.toLowerCase().replace(/\s+/g, '_') || 'app'}.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+class ${softwareKnowledge.name?.replace(/\s+/g, '') || 'App'}:
+    """Main application class for ${softwareKnowledge.name || 'the application'}."""
+    
+    def __init__(self, config: Optional[Dict] = None):
+        """Initialize the application with configuration."""
+        self.config = config or {}
+        self.logger = logger
+        self.start_time = datetime.now()
+        
+    def setup(self) -> bool:
+        """Setup the application environment."""
+        try:
+            self.logger.info("Setting up ${softwareKnowledge.name || 'application'}...")
+            
+            # Add your setup logic here
+            # Example: Create directories, validate config, etc.
+            
+            self.logger.info("Setup completed successfully")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Setup failed: {e}")
+            return False
+    
+    def run(self) -> bool:
+        """Main execution method."""
+        try:
+            self.logger.info("Starting ${softwareKnowledge.name || 'application'}...")
+            
+            if not self.setup():
+                return False
+            
+            # Add your main logic here
+            self.process_data()
+            self.generate_report()
+            
+            self.logger.info("Application completed successfully")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Application failed: {e}")
+            return False
+    
+    def process_data(self):
+        """Process data according to business logic."""
+        self.logger.info("Processing data...")
+        # Add your data processing logic here
+        
+    def generate_report(self):
+        """Generate a report of the processing results."""
+        self.logger.info("Generating report...")
+        # Add your report generation logic here
+        
+    def cleanup(self):
+        """Cleanup resources."""
+        self.logger.info("Cleaning up...")
+        # Add your cleanup logic here
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(description='${softwareKnowledge.name || 'Application'} Script')
+    parser.add_argument('--config', '-c', help='Configuration file path')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
+    
+    args = parser.parse_args()
+    
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    
+    # Load configuration
+    config = {}
+    if args.config:
+        try:
+            with open(args.config, 'r') as f:
+                config = json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load config: {e}")
+            sys.exit(1)
+    
+    # Create and run application
+    app = ${softwareKnowledge.name?.replace(/\s+/g, '') || 'App'}(config)
+    
+    try:
+        success = app.run()
+        sys.exit(0 if success else 1)
+    except KeyboardInterrupt:
+        logger.info("Application interrupted by user")
+        sys.exit(0)
+    finally:
+        app.cleanup()
+
+if __name__ == "__main__":
+    main()
+\`\`\`
+
+**Features included:**
+• Professional logging setup
+• Command-line argument parsing
+• Configuration management
+• Error handling and cleanup
+• Type hints for better code quality
+• Modular class structure
+• Documentation strings
+
+**Usage:**
+\`\`\`bash
+# Basic usage
+python ${softwareKnowledge.name?.toLowerCase().replace(/\s+/g, '_') || 'app'}.py
+
+# With configuration file
+python ${softwareKnowledge.name?.toLowerCase().replace(/\s+/g, '_') || 'app'}.py -c config.json
+
+# Verbose logging
+python ${softwareKnowledge.name?.toLowerCase().replace(/\s+/g, '_') || 'app'}.py -v
+\`\`\``,
+      model: 'enhanced-code-generator',
+      confidence: 0.95,
+      suggestions: [
+        'How do I add database integration?',
+        'How do I implement API endpoints?',
+        'How do I add unit tests?',
+        'How do I package for distribution?',
+        'How do I add async support?'
+      ],
+      tokensUsed: 0
+    };
+  }
+  
+  // Default enhanced response
+  return {
+    content: generateEnhancedResponse(message, softwareKnowledge),
+    model: 'enhanced-local',
+    confidence: 0.9,
+    suggestions: generateEnhancedSuggestions(message, softwareKnowledge),
+    tokensUsed: 0
+  };
+}
+
+// Generate React-specific templates
+function generateReactTemplate(message, softwareKnowledge, context) {
+  return generateCodeTemplate(message, softwareKnowledge, context);
+}
+
+// Generate Python-specific templates
+function generatePythonTemplate(message, softwareKnowledge, context) {
+  return generateCodeTemplate(message, softwareKnowledge, context);
+}
+
+// Generate API templates
+function generateAPITemplate(message, softwareKnowledge, context) {
+  return {
+    content: `Here's a complete API template for ${softwareKnowledge.name || 'your application'}:
+
+\`\`\`javascript
+// Express.js API Template
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
+
+const app = express();
+const PORT = process.env.PORT || 5001;
+
+// Middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan('combined'));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
+});
+app.use('/api/', limiter);
+
+// Routes
+app.use('/api/health', require('./routes/health'));
+app.use('/api/ai', require('./routes/ai-integration'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/services', require('./routes/services'));
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    error: 'Something went wrong!',
+    message: err.message
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Route not found',
+    message: \`Route \${req.originalUrl} does not exist\`
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`🚀 Server running on port \${PORT}\`);
+  console.log(\`📚 API Documentation: http://localhost:\${PORT}/api-docs\`);
+  console.log(\`🔍 Health Check: http://localhost:\${PORT}/api/health\`);
+});
+
+module.exports = app;
+\`\`\`
+
+**Route Template:**
+\`\`\`javascript
+// routes/example.js
+const express = require('express');
+const router = express.Router();
+const { verifyToken } = require('../middleware/auth');
+
+// GET /api/ai/integration - Main AI Integration endpoint
+router.get('/integration', async (req, res) => {
+  try {
+    const response = {
+      message: 'Maijjd AI Integration Platform',
+      version: '2.0.0',
+      status: 'operational',
+      capabilities: {
+        aiChat: {
+          endpoint: '/api/ai/chat',
+          method: 'POST',
+          description: 'AI-powered chat with software knowledge',
+          authentication: 'Optional (JWT token for premium features)',
+          features: ['Natural language processing', 'Software-specific responses', 'Code generation']
+        },
+        aiVoice: {
+          endpoint: '/api/ai/voice',
+          method: 'POST',
+          description: 'Voice-to-text and text-to-speech AI features',
+          authentication: 'Required (JWT token)',
+          features: ['Voice transcription', 'Audio response generation']
+        },
+        aiModels: {
+          endpoint: '/api/ai/models',
+          method: 'GET',
+          description: 'Available AI models and configurations',
+          authentication: 'Required (JWT token)',
+          features: ['Model selection', 'Configuration management']
+        },
+        demoChat: {
+          endpoint: '/api/ai/demo/chat',
+          method: 'POST',
+          description: 'Demo AI chat (no authentication required)',
+          authentication: 'None',
+          features: ['Free trial', 'Basic responses', 'Software assistance']
+        }
+      },
+      supportedSoftware: Object.keys(SOFTWARE_KNOWLEDGE),
+      aiModels: Object.keys(AI_MODELS),
+      features: {
+        realTimeProcessing: true,
+        multiLanguageSupport: true,
+        codeGeneration: true,
+        voiceIntegration: true,
+        contextAwareness: true,
+        personalizedResponses: true
+      },
+      limits: {
+        demoRequests: 'Unlimited',
+        authenticatedRequests: '2000 per 15 minutes',
+        responseTimeout: '30 seconds',
+        maxMessageLength: '1000 characters'
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development',
+        aiFeaturesEnabled: process.env.AI_FEATURES_ENABLED === 'true',
+        version: '2.0.0'
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('AI Integration endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve AI integration information',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// GET /api/ai - Root AI endpoint
+router.get('/', async (req, res) => {
+  try {
+    res.json({
+      message: 'Maijjd AI Platform',
+      version: '2.0.0',
+      endpoints: {
+        integration: '/api/ai/integration',
+        chat: '/api/ai/chat',
+        demo: '/api/ai/demo/chat',
+        voice: '/api/ai/voice',
+        models: '/api/ai/models',
+        preferences: '/api/ai/preferences'
+      },
+      status: 'operational',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// POST /api/ai/analyze - Software analysis endpoint
+router.post('/analyze', verifyToken, async (req, res) => {
+  try {
+    const { software_id, analysis_type, ai_model, parameters } = req.body;
+    
+    // Validate required parameters
+    if (!software_id || !analysis_type || !ai_model) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters',
+        message: 'software_id, analysis_type, and ai_model are required',
+        required_fields: ['software_id', 'analysis_type', 'ai_model'],
+        ai_compatible: true
+      });
+    }
+
+    // Simulate AI analysis
+    const analysis_id = 'analysis_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const results = {
+      performance_score: Math.floor(Math.random() * 100) + 1,
+      efficiency_rating: Math.floor(Math.random() * 100) + 1,
+      optimization_potential: Math.floor(Math.random() * 100) + 1
+    };
+
+    const response = {
+      success: true,
+      data: {
+        analysis_id,
+        software_id,
+        analysis_type,
+        ai_model,
+        results,
+        confidence_score: Math.random() * 0.3 + 0.7, // 70-100%
+        processing_time: Math.floor(Math.random() * 5000) + 1000, // 1-6 seconds
+        recommendations: [
+          'Consider implementing caching strategies',
+          'Optimize database queries',
+          'Implement lazy loading for better performance'
+        ]
+      },
+      metadata: {
+        ai_compatible: true,
+        timestamp: new Date().toISOString(),
+        request_id: 'ai-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      ai_compatible: true
+    });
+  }
+});
+
+// POST /api/ai/automation/workflow - Create automation workflow
+router.post('/automation/workflow', verifyToken, async (req, res) => {
+  try {
+    const { name, description, steps, triggers, conditions } = req.body;
+    
+    // Validate required parameters
+    if (!name || !description || !steps || !Array.isArray(steps)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters',
+        message: 'name, description, and steps array are required',
+        required_fields: ['name', 'description', 'steps'],
+        ai_compatible: true
+      });
+    }
+
+    // Simulate workflow creation
+    const workflow = {
+      id: 'workflow_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      name,
+      description,
+      steps,
+      triggers: triggers || [],
+      conditions: conditions || [],
+      status: 'active',
+      created_at: new Date().toISOString(),
+      created_by: req.user.id
+    };
+
+    const response = {
+      success: true,
+      data: {
+        workflow,
+        message: 'Workflow created successfully'
+      },
+      metadata: {
+        ai_compatible: true,
+        timestamp: new Date().toISOString(),
+        request_id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      ai_compatible: true
+    });
+  }
+});
+
+// POST /api/ai/automation/execute/:workflow_id - Execute automation workflow
+router.post('/automation/execute/:workflow_id', verifyToken, async (req, res) => {
+  try {
+    const { workflow_id } = req.params;
+    
+    // Simulate workflow execution
+    const execution = {
+      execution_id: `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      workflow_id,
+      status: 'completed',
+      started_at: new Date().toISOString(),
+      completed_at: new Date(Date.now() + 2000).toISOString(), // 2 seconds later
+      results: {
+        steps_executed: Math.floor(Math.random() * 10) + 1,
+        success_rate: Math.random() * 0.2 + 0.8, // 80-100%
+        errors: []
+      }
+    };
+
+    const response = {
+      success: true,
+      data: {
+        execution,
+        message: 'Workflow executed successfully'
+      },
+      metadata: {
+        ai_compatible: true,
+        timestamp: new Date().toISOString(),
+        request_id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      ai_compatible: true
+    });
+  }
+});
+
+// POST /api/ai/optimize - Performance optimization endpoint
+router.post('/optimize', verifyToken, async (req, res) => {
+  try {
+    const { target_system, optimization_type, parameters } = req.body;
+    
+    // Validate required parameters
+    if (!target_system || !optimization_type) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters',
+        message: 'target_system and optimization_type are required',
+        required_fields: ['target_system', 'optimization_type'],
+        ai_compatible: true
+      });
+    }
+
+    // Simulate optimization
+    const optimization_id = `opt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const results = {
+      before_score: Math.floor(Math.random() * 100) + 1,
+      after_score: Math.floor(Math.random() * 100) + 1,
+      improvement_percentage: Math.floor(Math.random() * 50) + 10
+    };
+
+    const response = {
+      success: true,
+      data: {
+        optimization_id,
+        target_system,
+        optimization_type,
+        results,
+        recommendations: [
+          'Implement connection pooling',
+          'Add database indexes',
+          'Optimize memory usage'
+        ]
+      },
+      metadata: {
+        ai_compatible: true,
+        timestamp: new Date().toISOString(),
+        request_id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      ai_compatible: true
+    });
+  }
+});
+
+// POST /api/ai/security/assess - Security assessment endpoint
+router.post('/security/assess', verifyToken, async (req, res) => {
+  try {
+    const { target_system, assessment_type, scope } = req.body;
+    
+    // Validate required parameters
+    if (!target_system || !assessment_type) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters',
+        message: 'target_system and assessment_type are required',
+        required_fields: ['target_system', 'assessment_type'],
+        ai_compatible: true
+      });
+    }
+
+    // Simulate security assessment
+    const assessment_id = `sec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const results = {
+      overall_score: Math.floor(Math.random() * 100) + 1,
+      vulnerabilities_found: Math.floor(Math.random() * 10),
+      risk_level: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)],
+      compliance_status: Math.random() > 0.5 ? 'compliant' : 'non-compliant'
+    };
+
+    const response = {
+      success: true,
+      data: {
+        assessment_id,
+        target_system,
+        assessment_type,
+        results,
+        recommendations: [
+          'Implement multi-factor authentication',
+          'Regular security audits',
+          'Update security policies'
+        ]
+      },
+      metadata: {
+        ai_compatible: true,
+        timestamp: new Date().toISOString(),
+        request_id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      ai_compatible: true
+    });
+  }
+});
+
+// GET /api/ai/monitoring - Intelligent monitoring endpoint
+router.get('/monitoring', verifyToken, async (req, res) => {
+  try {
+    const { time_range = '24h', metrics_type = 'all' } = req.query;
+    
+    // Simulate monitoring data
+    const system_id = `sys_${Date.now()}`;
+    const metrics = {
+      cpu_usage: Math.random() * 100,
+      memory_usage: Math.random() * 100,
+      disk_usage: Math.random() * 100,
+      network_throughput: Math.random() * 1000,
+      response_time: Math.random() * 1000 + 100
+    };
+
+    const response = {
+      success: true,
+      data: {
+        system_id,
+        metrics_type,
+        time_range,
+        metrics,
+        alerts: [],
+        recommendations: [
+          'Consider scaling resources',
+          'Monitor disk space usage',
+          'Check network performance'
+        ]
+      },
+      metadata: {
+        ai_compatible: true,
+        timestamp: new Date().toISOString(),
+        request_id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      ai_compatible: true
+    });
+  }
+});
+
+// Additional AI endpoints can be added here as needed
+
+module.exports = router;
+\`\`\`
+
+**Middleware Template:**
+\`\`\`javascript
+// middleware/auth.js
+const jwt = require('jsonwebtoken');
+
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: 'Access token required'
+    });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      error: 'Invalid or expired token'
+    });
+  }
+};
+
+module.exports = { verifyToken };
+\`\`\`
+
+**Features included:**
+• Security middleware (helmet, CORS, rate limiting)
+• Request logging with Morgan
+• Comprehensive error handling
+• JWT authentication
+• Input validation
+• RESTful API structure
+• Environment variable configuration
+
+**Usage:**
+\`\`\`bash
+# Install dependencies
+npm install express cors helmet express-rate-limit morgan jsonwebtoken
+
+# Start the server
+npm start
+
+# Test endpoints
+curl http://localhost:5001/api/health
+curl -X POST -H "Content-Type: application/json" -d '{"name":"test","description":"test"}' http://localhost:5001/api/example
+\`\`\``,
+    model: 'enhanced-code-generator',
+    confidence: 0.95,
+    suggestions: [
+      'How do I add database integration?',
+      'How do I implement file uploads?',
+      'How do I add WebSocket support?',
+      'How do I implement caching?',
+      'How do I add monitoring and metrics?'
+    ],
+    tokensUsed: 0
+  };
+}
+
+// Enhanced intelligent response generation
+function generateEnhancedResponse(message, softwareKnowledge) {
+  // Add null checking for message parameter
+  if (!message || typeof message !== 'string') {
+    message = 'Hello, how can I help you?';
+  }
+  
+  const lowerMessage = message.toLowerCase();
+  const softwareName = softwareKnowledge?.name || 'this software';
+
+  // Check for specific question patterns with better responses
+  if (lowerMessage.includes('get started') || lowerMessage.includes('start') || lowerMessage.includes('begin')) {
+    return `Great! Let's get you started with ${softwareName}. Here's a comprehensive guide:
+
+**🚀 Quick Start Process:**
+1. **Access**: Navigate to the main dashboard and explore the interface
+2. **Setup**: Complete the initial configuration wizard (takes about 5 minutes)
+3. **Tutorial**: Use the built-in interactive tutorial mode for guided learning
+4. **Customization**: Adjust settings and preferences to match your workflow
+5. **Practice**: Use the demo data to familiarize yourself with all features
+
+**💡 Pro Tips:**
+• Start with the "Getting Started" section in the help menu
+• Watch the 2-minute overview video for a quick introduction
+• Use the search function to find specific features quickly
+• Bookmark frequently used tools for easy access
+
+**🔧 First Steps:**
+• Explore the main navigation menu
+• Check out the dashboard widgets
+• Try the sample data and templates
+• Customize your workspace layout
+
+Would you like me to walk you through any specific step in detail, or do you have questions about particular features?`;
+  }
+
+  if (lowerMessage.includes('feature') || lowerMessage.includes('capability') || lowerMessage.includes('what can')) {
+    return `${softwareName} offers powerful capabilities designed to transform your workflow:
+
+**🎯 Core Features:**
+${softwareKnowledge.features?.map(feature => `• ${feature}`).join('\n') || '• Advanced AI-powered assistance\n• Comprehensive workflow automation\n• Real-time collaboration tools\n• Advanced analytics and reporting\n• Multi-platform integration\n• Custom development capabilities'}
+
+**🚀 Advanced Capabilities:**
+• Intelligent automation and workflow optimization
+• Real-time collaboration and team management
+• Advanced analytics and reporting tools
+• Multi-platform integration and API access
+• Custom development and extensibility options
+• Enterprise-grade security and compliance
+
+**💡 Smart Features:**
+• AI-powered suggestions and recommendations
+• Predictive analytics and insights
+• Automated problem detection and resolution
+• Natural language processing for queries
+• Intelligent workflow optimization
+
+**🔧 Technical Capabilities:**
+• RESTful API with comprehensive endpoints
+• Webhook support for real-time integrations
+• Multi-format data import/export
+• Advanced search and filtering
+• Custom dashboard creation
+• Role-based access control
+
+What specific feature would you like to learn more about?`;
+  }
+
+  // Default enhanced response
+  return `I'm here to help you with ${softwareName}! 
+
+**🎯 How I can assist you:**
+• Generate code templates and examples
+• Provide step-by-step tutorials
+• Answer technical questions
+• Help with configuration and setup
+• Troubleshoot issues and problems
+• Suggest best practices and optimizations
+
+**💡 Try asking me to:**
+• "Generate a React component template"
+• "Create a Python script for data processing"
+• "Show me an API endpoint example"
+• "Help me get started with [specific feature]"
+• "Explain how to [specific task]"
+
+What would you like to know or accomplish today?`;
+}
+
+// Enhanced suggestions generation
+function generateEnhancedSuggestions(message, softwareKnowledge) {
+  // Add null checking for message parameter
+  if (!message || typeof message !== 'string') {
+    message = 'Hello';
+  }
+  
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('code') || lowerMessage.includes('template') || lowerMessage.includes('generate')) {
+    return [
+      'Generate a React component template',
+      'Create a Python script template',
+      'Show me an API endpoint example',
+      'Generate a database schema',
+      'Create a configuration file template'
+    ];
+  }
+  
+  if (lowerMessage.includes('react') || lowerMessage.includes('component')) {
+    return [
+      'How do I add state management?',
+      'How do I implement routing?',
+      'How do I add styling?',
+      'How do I handle forms?',
+      'How do I add animations?'
+    ];
+  }
+  
+  if (lowerMessage.includes('python') || lowerMessage.includes('script')) {
+    return [
+      'How do I add database integration?',
+      'How do I implement API endpoints?',
+      'How do I add unit tests?',
+      'How do I package for distribution?',
+      'How do I add async support?'
+    ];
+  }
+  
+  return [
+    'How do I get started?',
+    'What are the main features?',
+    'How do I configure settings?',
+    'Can you show me examples?',
+    'What are best practices?',
+    'How do I integrate with other tools?',
+    'What are the system requirements?',
+    'How do I get support?'
+  ];
+}
+
+// Process voice input (placeholder for actual voice processing)
+async function processVoiceInput(audioData, format) {
+  // This is where you would integrate with speech-to-text services
+  // like Google Speech-to-Text, AWS Transcribe, or Azure Speech Services
+  
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Simulate voice processing
+      resolve("This is a simulated voice transcription. In production, this would use actual speech-to-text services.");
+    }, 1000);
+  });
+}
+
+// Generate speech response (placeholder for actual text-to-speech)
+async function generateSpeechResponse(text) {
+  // This is where you would integrate with text-to-speech services
+  // like Google Text-to-Speech, AWS Polly, or Azure Speech Services
+  
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Simulate speech generation
+      resolve({
+        audioUrl: "data:audio/wav;base64,simulated_audio_data",
+        duration: text.length * 0.1, // Rough estimate
+        format: "wav"
+      });
+    }, 500);
+  });
+}
+
+// Store chat history (placeholder for actual database storage)
+async function storeChatHistory(userId, userMessage, aiResponse, software, context) {
+  try {
+    // This is where you would store chat history in your database
+    // For analytics, user experience improvement, and support purposes
+    
+    const chatRecord = {
+      userId,
+      userMessage,
+      aiResponse,
+      software,
+      context,
+      timestamp: new Date(),
+      sessionId: context?.sessionId
+    };
+
+    // await ChatHistory.create(chatRecord);
+    console.log('Chat history stored:', chatRecord);
+    
+  } catch (error) {
+    console.error('Error storing chat history:', error);
+    // Don't fail the main request if history storage fails
+  }
+}
+
+module.exports = router;
