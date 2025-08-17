@@ -7,7 +7,24 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const swaggerUi = require('swagger-ui-express');
-const swaggerDocument = require('./swagger.json');
+// Robust swagger loader for different deploy roots (e.g., /app vs /app/backend_maijjd)
+let swaggerDocument;
+try {
+  // Prefer resolving relative to this file
+  swaggerDocument = require(path.join(__dirname, 'swagger.json'));
+} catch (e1) {
+  try {
+    // Fallback: resolve relative to current working directory
+    swaggerDocument = require(path.resolve(process.cwd(), 'swagger.json'));
+  } catch (e2) {
+    console.warn('⚠️  Swagger file not found; serving minimal OpenAPI stub');
+    swaggerDocument = {
+      openapi: '3.0.0',
+      info: { title: 'Maijjd Intelligent API', version: '2.0.0' },
+      paths: {}
+    };
+  }
+}
 const path = require('path');
 const https = require('https');
 const fs = require('fs');
@@ -697,6 +714,15 @@ app.get('/health', (req, res) => {
     version: '2.0.0',
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// Auth refresh aliases to the canonical API path
+app.post('/refresh', (req, res) => {
+  // Preserve method and body
+  res.redirect(307, '/api/auth/refresh');
+});
+app.post('/auth/refresh', (req, res) => {
+  res.redirect(307, '/api/auth/refresh');
 });
 
 // API Routes
