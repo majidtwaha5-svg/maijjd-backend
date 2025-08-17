@@ -679,6 +679,35 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
   }
 }));
 
+// Basic root endpoints for platform health checks (Railway/Render/etc.)
+app.head('/', (req, res) => {
+  res.status(200).end();
+});
+
+app.get('/', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Non-namespaced health endpoint for platform health checks
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Health endpoint',
+    timestamp: new Date().toISOString(),
+    version: '2.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Auth refresh aliases to the canonical API path
+app.post('/refresh', (req, res) => {
+  // Preserve method and body
+  res.redirect(307, '/api/auth/refresh');
+});
+app.post('/auth/refresh', (req, res) => {
+  res.redirect(307, '/api/auth/refresh');
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/software', softwareRoutes);
@@ -749,8 +778,8 @@ function generateRequestId() {
   return Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
 }
 
-// Start HTTP server
-app.listen(PORT, () => {
+// Start HTTP server (bind to all interfaces for PaaS platforms like Railway)
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Maijjd Intelligent API Server running on port ${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
   console.log(`🔍 Health Check: http://localhost:${PORT}/api/health`);
@@ -760,8 +789,12 @@ app.listen(PORT, () => {
   console.log(`📊 Performance: Compression and caching enabled`);
 });
 
-// HTTPS Server Setup (if SSL certificates are available)
+// HTTPS Server Setup (optional: only if explicitly enabled and certificates are available)
 const setupHTTPS = () => {
+  if (process.env.ENABLE_HTTPS !== 'true') {
+    console.log('⚠️  HTTPS disabled (set ENABLE_HTTPS=true to enable)');
+    return;
+  }
   try {
     const privateKey = fs.readFileSync('../ssl/private.key', 'utf8');
     const certificate = fs.readFileSync('../ssl/certificate.crt', 'utf8');
@@ -771,7 +804,7 @@ const setupHTTPS = () => {
       cert: certificate
     }, app);
     
-    httpsServer.listen(HTTPS_PORT, () => {
+    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
       console.log(`🔐 Maijjd HTTPS Server running on port ${HTTPS_PORT}`);
       console.log(`🔒 Secure API: https://localhost:${HTTPS_PORT}/api`);
     });

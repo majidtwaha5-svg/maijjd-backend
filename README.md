@@ -1,477 +1,427 @@
-# Maijjd Intelligent API - Advanced Software Integration Platform
+# Maijjd Platform
 
-## Overview
+This repository contains the Maijjd web platform (frontend React app and backend Node/Express API).
 
-The Maijjd Intelligent API is a comprehensive backend system designed specifically for AI platforms and intelligent automation systems. It provides advanced features including workflow automation, predictive analytics, performance optimization, and security assessment with full AI compatibility.
+## Monorepo Structure
 
-## 🚀 Key Features
+- `frontend_maijjd/` – React app (static build served on Railway)
+- `backend_maijjd/` – Express API (JWT auth, Stripe integration stubs, AI endpoints, payments, etc.)
 
-### 🤖 AI Integration & Automation
-- **Multi-Model AI Support**: GPT-4, Claude-3, Gemini Pro, Llama-2, and custom models
-- **Intelligent Workflow Automation**: Create and execute complex automation workflows
-- **Performance Optimization**: AI-driven system optimization recommendations
-- **Security Assessment**: Automated security vulnerability scanning and assessment
-- **Predictive Analytics**: Real-time monitoring with AI-powered predictions
+## System Requirements
 
-### 🔒 Security & Authentication
-- **JWT Token Authentication**: Secure token-based authentication
-- **Role-Based Access Control**: Different access levels for AI capabilities
-- **Rate Limiting**: AI-optimized rate limiting for different request types
-- **CORS Configuration**: Comprehensive CORS setup for AI platforms
-- **HTTPS Support**: Full SSL/TLS encryption
+- Node.js 18+
+- npm 9+
+- (Optional) MongoDB if you enable DB features
 
-### 📊 API Features
-- **OpenAPI/Swagger Documentation**: Complete API documentation
-- **Consistent JSON Responses**: AI-friendly response formats
-- **Request Tracking**: Unique request IDs for all operations
-- **Error Handling**: Comprehensive error responses with AI suggestions
-- **Performance Monitoring**: Real-time system metrics and analytics
+## Environment Setup
 
-## 🛠 Installation
+Create a `.env` in each service or set variables in Railway:
 
-### Prerequisites
-- Node.js >= 18.0.0
-- npm >= 8.0.0
-- Redis (optional, for caching)
-- MongoDB (optional, for data persistence)
+Backend (`backend_maijjd`):
+- NODE_ENV=development|production
+- PORT=5001
+- JWT_SECRET=change-me
+- FRONTEND_BASE_URL=http://localhost:3000
+- STRIPE_SECRET_KEY=sk_test_xxx
+- STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+- (Optional) STRIPE_WEBHOOK_SECRET=whsec_xxx
+- (Optional) SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM
 
-### Quick Start
+Frontend (`frontend_maijjd`):
+- REACT_APP_API_URL=http://localhost:5001/api
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/maijjd/backend-api.git
-cd backend-api
+## Installation
+
+From the repo root, in two terminals:
+
+Frontend
+```
+cd frontend_maijjd
+npm ci
+npm start
 ```
 
-2. **Install dependencies**
+Backend
+```
+cd backend_maijjd
+npm ci
+npm start
+```
+
+## Usage
+
+- Visit http://localhost:3000 for the app
+- API at http://localhost:5001/api
+
+## Deploy to Railway (Auto‑deploy from GitHub)
+
+1. Push this repo to GitHub.
+2. In Railway > New Project > Deploy from GitHub > select repo.
+3. Create two services:
+   - Backend: root `backend_maijjd`, Start `npm start` (Railway PORT), Health `/api/health`.
+   - Frontend: root `frontend_maijjd`, Build `npm ci && npm run build`, Start `npx serve -s build -l $PORT`.
+4. Set variables above for each service.
+5. Enable Auto‑Deploys on main so every push deploys with zero downtime.
+6. Add custom domains (e.g., `www.maijjd.com` and `api.maijjd.com`) in Railway service settings and point DNS CNAME accordingly.
+
+## Stripe (Test Mode First)
+
+- Set `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` test keys in Railway (backend).
+- (Optional) Add a webhook to `/api/payments/webhook` and set `STRIPE_WEBHOOK_SECRET`.
+- When ready, swap to live keys only.
+
+## Prohibited Uses (Professional Features)
+
+The following are not allowed on this platform or its deployment environment:
+
+- Mirrors / Userbots or API‑abusing clones
+- Crypto miners
+- DMCA‑protected or pirated content
+- Torrent aggregators or promotion
+- VNC / Virtual desktops / remote GUI hosts
+- Anything illegal
+
+## Screenshots / Diagrams / Performance Charts
+
+- Add real screenshots of the UI to `docs/screenshots/` and link them here.
+- Add real architecture diagrams to `docs/diagrams/` (e.g., draw.io exports) and link them here.
+- Add performance charts from test runs to `docs/performance/`.
+
+## License
+
+MIT (see LICENSE)
+
+# Maijjd - Professional Software Solutions
+
+A modern, full-stack web application showcasing professional software solutions and development services.
+
+## 🚀 Features
+
+- **Modern React Frontend**: Built with React 18, Tailwind CSS, and Lucide React icons
+- **Node.js Backend API**: Express.js server with comprehensive REST API
+- **Responsive Design**: Mobile-first approach with beautiful UI/UX
+- **Contact Management**: Contact form with email notifications
+- **Software Showcase**: Comprehensive software solutions catalog
+- **User Authentication**: JWT-based authentication system
+- **Docker Support**: Complete containerization for easy deployment
+- **Production Ready**: Optimized for production deployment
+
+## 📁 Project Structure
+
+```
+Maijjd_Full_Project/
+├── frontend_maijjd/          # React frontend application
+│   ├── public/              # Static files
+│   ├── src/                 # Source code
+│   │   ├── components/      # Reusable components
+│   │   ├── pages/          # Page components
+│   │   └── ...
+│   ├── package.json        # Frontend dependencies
+│   └── Dockerfile          # Frontend container
+├── backend_maijjd/          # Node.js backend API
+│   ├── routes/             # API routes
+│   ├── server.js           # Main server file
+│   ├── package.json        # Backend dependencies
+│   └── Dockerfile          # Backend container
+├── docs/                   # Documentation
+├── docker-compose.yml      # Docker orchestration
+├── nginx.conf             # Nginx configuration
+└── README.md              # This file
+```
+
+## 🚀 Deployment Scripts
+
+### Available Deployment Options
+
+| Script | Description | Use Case |
+|--------|-------------|----------|
+| **`deploy-super-quick.sh`** | 🚀 **Recommended** - Auto-detects environment, zero config | First-time setup, quick testing |
+| **`deploy-now-ultimate.sh`** | ⚡ **Ultimate** - One-liner deployment | Fastest possible deployment |
+| `quick-deploy.sh` | 🐳 Docker-focused deployment with options | Production Docker deployment |
+| `local-dev.sh` | 💻 Local development with hot reload | Development and debugging |
+| `deploy-now.sh` | 🎯 Simple Docker deployment | Basic container deployment |
+
+### Why Use Super-Quick?
+
+- **Zero Configuration** - Works out of the box
+- **Smart Auto-Detection** - Chooses best method automatically  
+- **Fallback Support** - Falls back to local if Docker unavailable
+- **Auto-Setup** - Creates all necessary files and configs
+- **Cross-Platform** - Works on macOS, Linux, and Windows
+
+## 🛠️ Technology Stack
+
+### Frontend
+- **React 18**: Modern React with hooks and functional components
+- **Tailwind CSS**: Utility-first CSS framework
+- **React Router**: Client-side routing
+- **Lucide React**: Beautiful icons
+- **Axios**: HTTP client for API calls
+
+### Backend
+- **Node.js**: JavaScript runtime
+- **Express.js**: Web application framework
+- **JWT**: Authentication and authorization
+- **bcryptjs**: Password hashing
+- **express-validator**: Input validation
+- **cors**: Cross-origin resource sharing
+- **helmet**: Security headers
+
+### DevOps
+- **Docker**: Containerization
+- **Docker Compose**: Multi-container orchestration
+- **Nginx**: Reverse proxy and load balancer
+- **MongoDB**: Database (optional)
+- **Redis**: Caching (optional)
+
+## 🚀 Quick Start
+
+### 🚀 Super-Quick Deployment (Recommended)
+
+**The fastest way to get started - just one command!**
+
+```bash
+# Make executable and deploy
+chmod +x deploy-super-quick.sh && ./deploy-super-quick.sh
+
+# Or use the ultimate one-liner
+./deploy-now-ultimate.sh
+```
+
+This script will:
+- Auto-detect your system and choose the best deployment method
+- Set up everything automatically (Docker or local)
+- Start all services with optimal configuration
+- Open your browser automatically (macOS)
+
+**No configuration needed!** 🎉
+
+### Prerequisites
+
+- Node.js 18+ and npm (for local development)
+- Docker and Docker Compose (for containerized deployment)
+- Git
+
+### Option 1: Super-Quick Deployment (Recommended)
+
+#### Frontend Setup
+
+1. Navigate to the frontend directory:
+```bash
+cd frontend_maijjd
+```
+
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. **Environment setup**
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-4. **Start the server**
+3. Start the development server:
 ```bash
 npm start
 ```
 
-### Environment Variables
+The frontend will be available at `http://localhost:3000`
 
-```env
-# Server Configuration
-PORT=5001
-HTTPS_PORT=5002
-NODE_ENV=development
+#### Backend Setup
 
-# Security
-JWT_SECRET=your-super-secret-jwt-key
-JWT_EXPIRES_IN=24h
-
-# Database (optional)
-MONGODB_URI=mongodb://localhost:27017/maijjd
-REDIS_URL=redis://localhost:6379
-
-# AI Configuration
-AI_ENABLED=true
-AI_MODELS=gpt-4,claude-3,gemini-pro,llama-2
-AI_RATE_LIMIT=2000
-
-# External Services
-TWILIO_ACCOUNT_SID=your-twilio-sid
-TWILIO_AUTH_TOKEN=your-twilio-token
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-email-password
+1. Navigate to the backend directory:
+```bash
+cd backend_maijjd
 ```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+The backend API will be available at `http://localhost:5000`
+
+### Option 2: Docker Deployment
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd Maijjd_Full_Project
+```
+
+2. Start all services with Docker Compose:
+```bash
+docker-compose up -d
+```
+
+3. Access the application:
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:5000`
+- Nginx (reverse proxy): `http://localhost:80`
 
 ## 📚 API Documentation
 
 ### Base URL
-- Development: `http://localhost:5001`
-- Production: `https://api.maijjd.com`
-
-### Authentication
-All API requests require a JWT token in the Authorization header:
 ```
-Authorization: Bearer <your-jwt-token>
+http://localhost:5000/api
 ```
 
-### AI Platform Headers
-For optimal AI integration, include these headers:
-```
-X-Request-ID: unique-request-id
-X-AI-Platform: your-ai-platform-name
-X-Client-Version: 1.0.0
-X-Platform: web|mobile|desktop
-X-Device-Type: desktop|mobile|tablet
-```
+### Endpoints
 
-## 🔌 AI Integration Endpoints
+#### Authentication
+- `POST /auth/register` - Register a new user
+- `POST /auth/login` - Login user
+- `GET /auth/profile` - Get user profile
+- `PUT /auth/profile` - Update user profile
 
-### 1. AI Models Management
+#### Contact
+- `POST /contact` - Submit contact form
+- `GET /contact` - Get all contact requests (admin)
+- `GET /contact/:id` - Get contact request by ID
+- `PATCH /contact/:id/status` - Update contact status
 
-#### Get Available AI Models
-```http
-GET /api/ai/models
-```
+#### Software
+- `GET /software` - Get all software
+- `GET /software/categories` - Get software categories
+- `GET /software/:id` - Get software by ID
+- `GET /software/category/:categoryId` - Get software by category
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "models": [
-      {
-        "name": "gpt-4",
-        "status": "available",
-        "capabilities": ["text", "analysis", "optimization"],
-        "endpoints": ["/api/ai/analyze", "/api/ai/optimize"],
-        "documentation": "https://platform.openai.com/docs/models/gpt-4"
-      }
-    ],
-    "total_models": 5,
-    "available_models": 5,
-    "ai_platform_compatible": true,
-    "api_version": "2.0.0"
-  },
-  "metadata": {
-    "timestamp": "2024-01-15T10:30:00Z",
-    "request_id": "ai_1705312200000",
-    "ai_compatible": true
-  }
-}
-```
+#### Services
+- `GET /services` - Get all services
+- `GET /services/:id` - Get service by ID
+- `GET /services/category/:category` - Get services by category
 
-### 2. Intelligent Software Analysis
+#### Users
+- `GET /users` - Get all users (admin)
+- `GET /users/:id` - Get user by ID
+- `PUT /users/:id` - Update user
+- `DELETE /users/:id` - Delete user
 
-#### Analyze Software
-```http
-POST /api/ai/analyze
-```
+## 🎨 Customization
 
-**Request Body:**
-```json
-{
-  "software_id": "software-123",
-  "analysis_type": "performance",
-  "ai_model": "gpt-4",
-  "parameters": {
-    "depth": "comprehensive",
-    "include_recommendations": true
-  }
-}
+### Styling
+The application uses Tailwind CSS for styling. You can customize the design by:
+
+1. Modifying `frontend_maijjd/tailwind.config.js` for theme customization
+2. Updating `frontend_maijjd/src/index.css` for custom styles
+3. Modifying component classes in the React components
+
+### Content
+- Update content in the React components under `frontend_maijjd/src/pages/`
+- Modify API responses in the backend routes under `backend_maijjd/routes/`
+- Update images and assets in `frontend_maijjd/public/`
+
+## 🔧 Configuration
+
+### Environment Variables
+
+#### Frontend (.env)
+```env
+REACT_APP_API_URL=http://localhost:5000/api
+REACT_APP_NAME=Maijjd
+REACT_APP_VERSION=1.0.0
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "analysis_id": "ai_analysis_1705312200000",
-    "software_id": "software-123",
-    "analysis_type": "performance",
-    "ai_model": "gpt-4",
-    "results": {
-      "score": 0.85,
-      "bottlenecks": ["database_queries", "memory_usage"],
-      "recommendations": ["Implement caching", "Optimize database indexes"]
-    },
-    "confidence_score": 0.95,
-    "processing_time": 150,
-    "recommendations": ["Implement caching", "Optimize database indexes"]
-  },
-  "metadata": {
-    "timestamp": "2024-01-15T10:30:00Z",
-    "request_id": "ai_1705312200000",
-    "ai_compatible": true,
-    "model_used": "gpt-4",
-    "analysis_duration": 150
-  }
-}
+#### Backend (.env)
+```env
+PORT=5000
+NODE_ENV=development
+JWT_SECRET=your-super-secret-jwt-key-here
+CORS_ORIGIN=http://localhost:3000
 ```
-
-### 3. Automation Workflows
-
-#### Create Workflow
-```http
-POST /api/ai/automation/workflow
-```
-
-**Request Body:**
-```json
-{
-  "name": "Data Processing Pipeline",
-  "workflow_type": "data_processing",
-  "steps": [
-    {
-      "id": "step-1",
-      "name": "Data Collection",
-      "type": "api_call",
-      "parameters": {
-        "endpoint": "/api/data/collect",
-        "method": "GET"
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "step-2",
-      "name": "Data Processing",
-      "type": "data_processing",
-      "parameters": {
-        "algorithm": "ml-classification"
-      },
-      "timeout": 60000
-    }
-  ],
-  "trigger_conditions": {
-    "schedule": "daily",
-    "time": "02:00"
-  },
-  "ai_guidance": "Optimize data processing for better performance"
-}
-```
-
-#### Execute Workflow
-```http
-POST /api/ai/automation/execute/{workflow_id}
-```
-
-### 4. Performance Optimization
-
-#### Optimize System Performance
-```http
-POST /api/ai/optimize
-```
-
-**Request Body:**
-```json
-{
-  "target_system": "web-application",
-  "optimization_type": "comprehensive",
-  "constraints": {
-    "budget": 5000,
-    "timeline": "2 weeks",
-    "priority": "high"
-  }
-}
-```
-
-### 5. Security Assessment
-
-#### Perform Security Assessment
-```http
-POST /api/ai/security/assess
-```
-
-**Request Body:**
-```json
-{
-  "target_system": "web-application",
-  "assessment_type": "comprehensive",
-  "scan_depth": "exhaustive"
-}
-```
-
-### 6. Intelligent Monitoring
-
-#### Get System Monitoring Data
-```http
-GET /api/ai/monitoring?system_id=test-system&metrics_type=all&time_range=24h
-```
-
-## 🔧 Core API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/profile` - Get user profile
-- `PUT /api/auth/profile` - Update user profile
-
-### Software Management
-- `GET /api/software` - Get all software
-- `GET /api/software/:id` - Get specific software
-- `POST /api/software` - Create new software
-- `PUT /api/software/:id` - Update software
-- `DELETE /api/software/:id` - Delete software
-
-### Services
-- `GET /api/services` - Get all services
-- `GET /api/services/:id` - Get specific service
-- `POST /api/services` - Create new service
-
-### Contact
-- `POST /api/contact` - Submit contact form
-
-### Users
-- `GET /api/users` - Get all users (admin only)
-- `GET /api/users/:id` - Get specific user
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
-
-## 🧪 Testing
-
-### Run All Tests
-```bash
-npm test
-```
-
-### Run AI Integration Tests
-```bash
-npm run ai:test
-```
-
-### Run Performance Tests
-```bash
-npm run performance:test
-```
-
-### Run Tests with Coverage
-```bash
-npm run test:coverage
-```
-
-## 📊 Monitoring & Analytics
-
-### Health Check
-```http
-GET /api/health
-```
-
-### Performance Metrics
-The API includes comprehensive monitoring:
-- Response time tracking
-- Error rate monitoring
-- Resource usage metrics
-- AI model performance
-- Workflow execution statistics
-
-## 🔒 Security Features
-
-### Rate Limiting
-- Standard API: 1000 requests per 15 minutes
-- AI Analysis: 100 requests per 15 minutes
-- AI Optimization: 50 requests per 15 minutes
-- AI Security Assessment: 30 requests per 15 minutes
-
-### CORS Configuration
-The API supports CORS for the following domains:
-- Local development: `http://localhost:*`
-- Production: `https://maijjd.com`
-- AI Platforms: OpenAI, Anthropic, Google, Microsoft, GitHub
-
-### Authentication Levels
-- **Basic**: Standard API access
-- **Standard**: Basic AI analysis
-- **Advanced**: Full AI capabilities
-- **Full**: Complete system access
 
 ## 🚀 Deployment
 
 ### Production Deployment
+
+1. **Build the application**:
 ```bash
-# Set environment variables
-export NODE_ENV=production
-export JWT_SECRET=your-production-secret
+# Frontend
+cd frontend_maijjd
+npm run build
 
-# Start the server
-npm start
+# Backend
+cd backend_maijjd
+npm install --production
 ```
 
-### Docker Deployment
+2. **Deploy with Docker**:
 ```bash
-# Build the image
-docker build -t maijjd-api .
-
-# Run the container
-docker run -p 5001:5001 -p 5002:5002 maijjd-api
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
-### Environment-Specific Configurations
-- **Development**: `npm run dev`
-- **Production**: `npm start`
-- **Testing**: `npm test`
+3. **Set up environment variables** for production:
+   - Update JWT_SECRET
+   - Configure database connections
+   - Set up SSL certificates
+   - Configure domain names
 
-## 📈 Performance Optimization
+### Cloud Deployment
 
-### Caching Strategy
-- Redis caching for frequently accessed data
-- Response caching for AI analysis results
-- Workflow execution caching
+#### AWS
+- Use AWS ECS for container orchestration
+- Deploy to AWS RDS for database
+- Use AWS S3 for static assets
+- Configure AWS CloudFront for CDN
 
-### Database Optimization
-- Connection pooling
-- Indexed queries
-- Query optimization
+#### Google Cloud
+- Use Google Cloud Run for serverless deployment
+- Deploy to Google Cloud SQL for database
+- Use Google Cloud Storage for static assets
 
-### AI Model Optimization
-- Model response caching
-- Batch processing
-- Async processing for heavy operations
+#### Azure
+- Use Azure Container Instances
+- Deploy to Azure SQL Database
+- Use Azure Blob Storage for static assets
 
-## 🔧 Configuration
+## 🔒 Security
 
-### AI Model Configuration
-```javascript
-// config/ai.js
-module.exports = {
-  models: {
-    'gpt-4': {
-      enabled: true,
-      rateLimit: 100,
-      timeout: 30000
-    },
-    'claude-3': {
-      enabled: true,
-      rateLimit: 50,
-      timeout: 45000
-    }
-  }
-};
-```
+- JWT-based authentication
+- Password hashing with bcrypt
+- CORS configuration
+- Security headers with Helmet
+- Input validation with express-validator
+- Rate limiting
+- HTTPS enforcement in production
 
-### Workflow Configuration
-```javascript
-// config/workflows.js
-module.exports = {
-  maxSteps: 20,
-  maxExecutionTime: 300000, // 5 minutes
-  retryAttempts: 3,
-  defaultTimeout: 30000
-};
-```
+## 📊 Monitoring
+
+- Health check endpoints
+- Error logging
+- Performance monitoring
+- User analytics (can be integrated)
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
+4. Add tests if applicable
+5. Submit a pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🆘 Support
 
-- **Documentation**: [https://maijjd.com/docs/api](https://maijjd.com/docs/api)
-- **Issues**: [GitHub Issues](https://github.com/maijjd/backend-api/issues)
-- **Email**: dev@maijjd.com
-- **Discord**: [Maijjd Community](https://discord.gg/maijjd)
+For support and questions:
+- Email: info@maijjd.com
+- Phone: +1 (872) 312-2293
+- Documentation: Check the `docs/` folder
 
-## 🔄 Version History
+## 🎯 Roadmap
 
-- **v2.0.0** - AI Integration & Intelligent Automation
-- **v1.8.0** - Enhanced Security & Performance
-- **v1.5.0** - Workflow Automation
-- **v1.0.0** - Initial Release
+- [ ] User dashboard
+- [ ] Admin panel
+- [ ] Real-time notifications
+- [ ] Payment integration
+- [ ] Multi-language support
+- [ ] Mobile app
+- [ ] Advanced analytics
+- [ ] API documentation with Swagger
 
 ---
 
-**Built with ❤️ by the Maijjd Development Team**
+**Built with ❤️ by the Maijjd Team**
