@@ -31,14 +31,13 @@ COPY package*.json ./
 # Install only production dependencies
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy application files from builder stage
+# Copy application files from builder stage (only what runtime needs)
 COPY --from=builder /app/server.js ./
 COPY --from=builder /app/routes ./routes
-COPY --from=builder /app/tests ./tests
-COPY --from=builder /app/jest.config.js ./
-COPY --from=builder /app/QUICK_API_TESTING.md ./
-COPY --from=builder /app/API_TESTING_SUMMARY.md ./
-COPY --from=builder /app/test-api.sh ./
+COPY --from=builder /app/middleware ./middleware
+COPY --from=builder /app/config ./config
+COPY --from=builder /app/services ./services
+COPY --from=builder /app/swagger.json ./swagger.json
 COPY --from=builder /app/README.md ./
 
 # Create a non-root user for security
@@ -53,11 +52,11 @@ RUN mkdir -p logs uploads && \
 USER nodejs
 
 # Expose the port the app runs on
-EXPOSE 5000
+# Optional: document an arbitrary port. Railway injects $PORT at runtime; app must listen on process.env.PORT
+# EXPOSE is not required for Railway
+# EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:5000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
+# Do not hardcode an internal healthcheck port; Railway performs health checks externally
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
