@@ -195,7 +195,7 @@ app.get('/api/software', async (req, res) => {
 });
 
 // --- Authentication Routes ---
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
     if (!name || !email || !password) {
@@ -205,6 +205,14 @@ app.post('/api/auth/register', (req, res) => {
     if (userStore.has(normalizedEmail)) {
       return res.status(409).json({ message: 'Email already registered' });
     }
+    // Check DB for existing email if configured
+    try {
+      const pool = db.getPool && db.getPool();
+      if (pool) {
+        const exists = (await db.query('select 1 from users where email=$1 limit 1', [normalizedEmail])).rows[0];
+        if (exists) return res.status(409).json({ message: 'Email already registered' });
+      }
+    } catch (_) {}
     const user = {
       id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
       name: String(name).trim(),
@@ -213,6 +221,16 @@ app.post('/api/auth/register', (req, res) => {
       passwordHash: hashPassword(password)
     };
     userStore.set(normalizedEmail, user);
+    // Persist to DB when configured
+    try {
+      const pool = db.getPool && db.getPool();
+      if (pool) {
+        await db.query(
+          'insert into users(id,name,email,role,password_hash) values($1,$2,$3,$4,$5) on conflict (email) do nothing',
+          [user.id, user.name, user.email, user.role, user.passwordHash]
+        );
+      }
+    } catch (_) {}
     const authentication = createTokens(user);
     return res.status(201).json({
       message: 'Registered',
@@ -230,7 +248,19 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(400).json({ message: 'email and password are required' });
     }
     const normalizedEmail = String(email).toLowerCase().trim();
-    const user = userStore.get(normalizedEmail);
+    let user = userStore.get(normalizedEmail);
+    if (!user) {
+      try {
+        const pool = db.getPool && db.getPool();
+        if (pool) {
+          const row = (await db.query('select id,name,email,role,password_hash from users where email=$1 limit 1', [normalizedEmail])).rows[0];
+          if (row) {
+            user = { id: row.id, name: row.name, email: row.email, role: row.role || 'user', passwordHash: row.password_hash };
+            userStore.set(normalizedEmail, user);
+          }
+        }
+      } catch (_) {}
+    }
     if (!user || user.passwordHash !== hashPassword(password)) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -282,6 +312,20 @@ app.post('/api/auth/forgot', (req, res) => {
 });
 app.post('/api/auth/reset', (req, res) => {
   return res.status(200).json({ message: 'Password reset successful.' });
+});
+
+// Logout endpoint: removes current session from memory and DB when possible
+app.post('/api/auth/logout', authMiddleware, async (req, res) => {
+  const { sessionId } = req.body || {};
+  try {
+    if (sessionId) {
+      sessionStore.delete(sessionId);
+      try { const pool = db.getPool && db.getPool(); if (pool) await db.query('delete from sessions where id=$1', [sessionId]); } catch (_) {}
+    }
+    return res.json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ message: 'Logout failed' });
+  }
 });
 
 // Public feedback submission
