@@ -35,8 +35,12 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=builder /app/server.js ./
 COPY --from=builder /app/routes ./routes
 COPY --from=builder /app/middleware ./middleware
+COPY --from=builder /app/models ./models
 COPY --from=builder /app/config ./config
 COPY --from=builder /app/services ./services
+COPY --from=builder /app/maijjd-ai-agent.js ./
+COPY --from=builder /app/maijjd-api-integration.js ./
+COPY --from=builder /app/monitoring-setup.js ./
 COPY --from=builder /app/swagger.json ./swagger.json
 COPY --from=builder /app/README.md ./
 

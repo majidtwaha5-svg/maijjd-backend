@@ -1,22 +1,17 @@
 const express = require('express');
-// const { validateContact } = require('../middleware/validation');
+const { validateContact } = require('../middleware/validation');
+const EmailService = require('../services/emailService');
 const router = express.Router();
 
+// Initialize email service
+const emailService = new EmailService();
+
 // Contact form submission
-router.post('/', async (req, res) => {
+router.post('/', validateContact, async (req, res) => {
   try {
+    const { name, email, company, phone, message, service } = req.validatedData || req.body;
 
-    const { name, email, company, phone, message, service } = req.body;
-
-    // Here you would typically:
-    // 1. Save to database
-    // 2. Send email notification
-    // 3. Log the contact request
-
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Mock response
+    // Create contact request object
     const contactRequest = {
       id: Date.now(),
       name,
@@ -29,9 +24,30 @@ router.post('/', async (req, res) => {
       createdAt: new Date().toISOString()
     };
 
+    // Send emails to customer and team
+    let emailResults = null;
+    try {
+      emailResults = await emailService.sendContactEmails(contactRequest);
+      console.log('📧 Email results:', emailResults);
+    } catch (emailError) {
+      console.error('❌ Email sending failed:', emailError);
+      // Continue with the request even if emails fail
+    }
+
+    // Here you would typically save to database
+    // For now, we'll log it
+    console.log('📝 New contact request received:', contactRequest);
+
+    // Return success response with email status
     res.status(201).json({
       message: 'Contact request submitted successfully',
-      data: contactRequest
+      data: contactRequest,
+      emails: {
+        customerConfirmation: emailResults?.customerEmailSent || false,
+        teamNotification: emailResults?.teamEmailSent || false,
+        customerError: emailResults?.customerError || null,
+        teamError: emailResults?.teamError || null
+      }
     });
 
   } catch (error) {
@@ -166,6 +182,45 @@ router.patch('/:id/status', async (req, res) => {
     res.status(500).json({
       error: 'Failed to update contact request status',
       message: 'Please try again later'
+    });
+  }
+});
+
+// Test email service endpoint
+router.post('/test-email', async (req, res) => {
+  try {
+    // Test email service connection
+    const connectionTest = await emailService.testConnection();
+    
+    if (!connectionTest) {
+      return res.status(500).json({
+        error: 'Email service connection failed',
+        message: 'Please check your SMTP configuration'
+      });
+    }
+
+    // Send test email
+    const testData = {
+      name: 'Test User',
+      email: req.body.testEmail || 'test@example.com',
+      company: 'Test Company',
+      message: 'This is a test message to verify email functionality.',
+      service: 'test-service'
+    };
+
+    const emailResults = await emailService.sendContactEmails(testData);
+
+    res.json({
+      message: 'Email service test completed',
+      connection: 'successful',
+      emails: emailResults
+    });
+
+  } catch (error) {
+    console.error('Email service test error:', error);
+    res.status(500).json({
+      error: 'Email service test failed',
+      message: error.message
     });
   }
 });

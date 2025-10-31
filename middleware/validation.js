@@ -530,18 +530,18 @@ const validateRateLimit = (req, res, next) => {
 };
 
 module.exports = {
-  // validateSoftwareData,
-  // validateUserRegistration,
-  // validateUserLogin,
-  // validateContact,
-  // validateAIAnalysis,
-  // validateAutomationWorkflow,
-  // validatePerformanceOptimization,
-  // validateSecurityAssessment,
-  // validateMonitoringQuery,
-  // validateAIHeaders,
-  // validateRateLimit,
-  // validateAIRequest,
-  // validateQuery,
-  // validateVoiceRequest
+  validateSoftwareData,
+  validateUserRegistration,
+  validateUserLogin,
+  validateContact,
+  validateAIAnalysis,
+  validateAutomationWorkflow,
+  validatePerformanceOptimization,
+  validateSecurityAssessment,
+  validateMonitoringQuery,
+  validateAIHeaders,
+  validateRateLimit,
+  validateAIRequest,
+  validateQuery,
+  validateVoiceRequest
 };

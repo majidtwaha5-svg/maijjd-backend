@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middleware/auth');
 const { requireAICapability } = require('../middleware/auth');
-// const { validateAIRequest } = require('../middleware/validation');
+const { validateAIRequest, validateMonitoringQuery, validatePerformanceOptimization, validateSecurityAssessment } = require('../middleware/validation');
 
 // Enhanced AI Models configuration with intelligent automation
 const AI_MODELS = {
@@ -1317,20 +1317,9 @@ router.post('/automation/execute/:workflow_id', verifyToken, async (req, res) =>
 });
 
 // POST /api/ai/optimize - Performance optimization endpoint
-router.post('/optimize', verifyToken, async (req, res) => {
+router.post('/optimize', verifyToken, validatePerformanceOptimization, async (req, res) => {
   try {
-    const { target_system, optimization_type, parameters } = req.body;
-    
-    // Validate required parameters
-    if (!target_system || !optimization_type) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required parameters',
-        message: 'target_system and optimization_type are required',
-        required_fields: ['target_system', 'optimization_type'],
-        ai_compatible: true
-      });
-    }
+    const { target_system, optimization_type, parameters } = req.validatedData || req.body;
 
     // Simulate optimization
     const optimization_id = 'opt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -1383,20 +1372,9 @@ router.post('/optimize', verifyToken, async (req, res) => {
 });
 
 // POST /api/ai/security/assess - Security assessment endpoint
-router.post('/security/assess', verifyToken, async (req, res) => {
+router.post('/security/assess', verifyToken, validateSecurityAssessment, async (req, res) => {
   try {
-    const { target_system, assessment_type, scope } = req.body;
-    
-    // Validate required parameters
-    if (!target_system || !assessment_type) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required parameters',
-        message: 'target_system and assessment_type are required',
-        required_fields: ['target_system', 'assessment_type'],
-        ai_compatible: true
-      });
-    }
+    const { target_system, assessment_type, scope } = req.validatedData || req.body;
 
     // Simulate security assessment
     const assessment_id = 'sec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -1446,9 +1424,9 @@ router.post('/security/assess', verifyToken, async (req, res) => {
 });
 
 // GET /api/ai/monitoring - Intelligent monitoring endpoint
-router.get('/monitoring', verifyToken, async (req, res) => {
+router.get('/monitoring', verifyToken, validateMonitoringQuery, async (req, res) => {
   try {
-    const { time_range = '24h', metrics_type = 'all' } = req.query;
+    const { time_range = '24h', metrics_type = 'all' } = req.validatedQuery || req.query;
     
     // Simulate monitoring data
     const system_id = 'sys_' + Date.now();
