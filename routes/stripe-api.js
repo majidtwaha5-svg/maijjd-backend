@@ -788,4 +788,110 @@ router.get('/billing-portal', (req, res) => {
   });
 });
 
+// Payment configuration endpoints (moved from payments.js for Railway compatibility)
+router.get('/config', (req, res) => {
+  const pk = process.env.STRIPE_PUBLISHABLE_KEY || stripe.publishableKey || null;
+  res.json({ publishableKey: pk ? String(pk) : null });
+});
+
+// Plans endpoint (moved from payments.js)
+const PLANS = {
+  free: {
+    id: 'free',
+    name: 'Free Trial',
+    amount: 0,
+    currency: 'usd',
+    interval: 'month',
+    features: [
+      'Access to basic software solutions',
+      'Community support',
+      'Limited features',
+      '7-day trial period'
+    ],
+    stripePriceId: process.env.STRIPE_PRICE_FREE || null,
+  },
+  starter: {
+    id: 'starter',
+    name: 'Starter Plan',
+    amount: 2999,
+    currency: 'usd',
+    interval: 'month',
+    features: [
+      'Access to 20+ software solutions',
+      'Email support',
+      'Standard features',
+      'Basic analytics'
+    ],
+    stripePriceId: process.env.STRIPE_PRICE_STARTER || null,
+  },
+  professional: {
+    id: 'professional',
+    name: 'Professional Plan',
+    amount: 9999,
+    currency: 'usd',
+    interval: 'month',
+    features: [
+      'Access to all 50+ software solutions',
+      'Priority support',
+      'Advanced features',
+      'API access',
+      'Advanced analytics'
+    ],
+    stripePriceId: process.env.STRIPE_PRICE_PROFESSIONAL || null,
+  },
+  enterprise: {
+    id: 'enterprise',
+    name: 'Enterprise Plan',
+    amount: 29999,
+    currency: 'usd',
+    interval: 'month',
+    features: [
+      'Access to all software solutions',
+      '24/7 dedicated support',
+      'All premium features',
+      'API access',
+      'Custom integrations',
+      'Advanced analytics',
+      'Custom SLA'
+    ],
+    stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE || null,
+  }
+};
+
+router.get('/plans', (req, res) => {
+  res.json({ plans: PLANS });
+});
+
+// Products endpoint
+const ONE_TIME_PRODUCTS = {
+  premiumUpgrade: {
+    id: 'premium-upgrade',
+    name: 'Premium Upgrade',
+    amount: 2999,
+    currency: 'usd',
+    description: 'One-time premium feature upgrade',
+    stripePriceId: process.env.STRIPE_PRICE_PREMIUM_UPGRADE || null,
+  },
+  apiAccess: {
+    id: 'api-access',
+    name: 'API Access',
+    amount: 9999,
+    currency: 'usd',
+    description: 'One-time API access purchase',
+    stripePriceId: process.env.STRIPE_PRICE_API_ACCESS || null,
+  },
+  customDevelopment: {
+    id: 'custom-development',
+    name: 'Custom Development',
+    amount: 49999,
+    currency: 'usd',
+    description: 'Custom development service',
+    stripePriceId: process.env.STRIPE_PRICE_CUSTOM_DEVELOPMENT || null,
+  }
+};
+
+router.get('/products', (req, res) => {
+  res.json({ products: ONE_TIME_PRODUCTS });
+});
+
 module.exports = router;
