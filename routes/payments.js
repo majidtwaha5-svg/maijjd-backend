@@ -1,5 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const {
+  validateCheckoutRequest,
+  validateOneTimeRequest,
+  validateSubscriptionRequest,
+  buildMetadata,
+  sanitizeMetadata,
+  errorResponse,
+  successResponse,
+  asyncHandler,
+  checkRateLimit
+} = require('./payments-validation');
 
 // Stripe integration
 let stripe = null;
@@ -124,111 +135,148 @@ router.get('/products', (req, res) => {
 });
 
 // Create Checkout Session for subscription
-router.post('/create-checkout-session', async (req, res) => {
-  try {
-    const { planId, successUrl, cancelUrl } = req.body;
-    const plan = PLANS[planId];
-
-    if (!plan) {
-      return res.status(400).json({ error: 'Invalid plan ID' });
-    }
-
-    const success = successUrl || `${getFrontendBase(req)}/payment/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancel = cancelUrl || `${getFrontendBase(req)}/payment/cancel`;
-
-    if (!stripe) {
-      return res.json({
-        mode: 'simulated',
-        url: `${getFrontendBase(req)}/register?plan=${plan.id}`,
-        message: 'Stripe not configured. Redirecting to signup as a fallback.'
-      });
-    }
-
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price: plan.stripePriceId || undefined,
-        price_data: plan.stripePriceId ? undefined : {
-          currency: plan.currency,
-          product_data: {
-            name: `${plan.name} Subscription`,
-            description: plan.features.join(', ')
-          },
-          recurring: {
-            interval: plan.interval
-          },
-          unit_amount: plan.amount,
-        },
-        quantity: 1,
-      }],
-      mode: 'subscription',
-      success_url: success,
-      cancel_url: cancel,
-      metadata: {
-        plan_id: plan.id,
-        plan_name: plan.name
-      }
-    });
-
-    res.json({ sessionId: session.id, url: session.url });
-  } catch (error) {
-    console.error('Error creating checkout session:', error);
-    res.status(500).json({ error: 'Failed to create checkout session' });
+router.post('/create-checkout-session', asyncHandler(async (req, res) => {
+  // Rate limiting
+  const clientId = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  if (!checkRateLimit(clientId)) {
+    return errorResponse(res, 429, 'Too many requests. Please try again later.');
   }
-});
+
+  // Validation
+  const validation = validateCheckoutRequest(req);
+  if (!validation.valid) {
+    return errorResponse(res, 400, 'Validation failed', { errors: validation.errors });
+  }
+
+  const { planId, successUrl, cancelUrl } = req.body;
+  const plan = PLANS[planId];
+
+  if (!plan) {
+    return errorResponse(res, 400, 'Invalid plan ID');
+  }
+
+  const success = successUrl || `${getFrontendBase(req)}/payment/success?session_id={CHECKOUT_SESSION_ID}`;
+  const cancel = cancelUrl || `${getFrontendBase(req)}/payment/cancel`;
+
+  if (!stripe) {
+    return res.json({
+      mode: 'simulated',
+      url: `${getFrontendBase(req)}/register?plan=${plan.id}`,
+      message: 'Stripe not configured. Redirecting to signup as a fallback.'
+    });
+  }
+
+  // Build comprehensive metadata
+  const metadata = buildMetadata(plan, {
+    created_by: 'checkout_api',
+    user_ip: clientId,
+    user_agent: req.headers['user-agent'],
+    ...sanitizeMetadata(req.body.metadata || {})
+  });
+
+  // Create checkout session with 7-day trial period
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: [{
+      price: plan.stripePriceId || undefined,
+      price_data: plan.stripePriceId ? undefined : {
+        currency: plan.currency,
+        product_data: {
+          name: `${plan.name} Subscription`,
+          description: plan.features.join(', ')
+        },
+        recurring: {
+          interval: plan.interval
+        },
+        unit_amount: plan.amount,
+      },
+      quantity: 1,
+    }],
+    mode: 'subscription',
+    subscription_data: {
+      trial_period_days: plan.id === 'free' ? undefined : 7, // 7-day free trial for paid plans
+      metadata: {
+        ...metadata,
+        trial_enabled: plan.id !== 'free'
+      }
+    },
+    success_url: success,
+    cancel_url: cancel,
+    metadata: metadata,
+    allow_promotion_codes: true,
+    customer_creation: 'always', // Ensure customer is created
+    billing_address_collection: 'required' // Collect billing address
+  });
+
+  return successResponse(res, { sessionId: session.id, url: session.url });
+}));
 
 // Create Checkout Session for one-time purchase
-router.post('/create-one-time-checkout-session', async (req, res) => {
-  try {
-    const { productId, successUrl, cancelUrl } = req.body;
-    const product = ONE_TIME_PRODUCTS[productId];
-
-    if (!product) {
-      return res.status(400).json({ error: 'Invalid product ID' });
-    }
-
-    const success = successUrl || `${getFrontendBase(req)}/payment/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancel = cancelUrl || `${getFrontendBase(req)}/payment/cancel`;
-
-    if (!stripe) {
-      return res.json({
-        mode: 'simulated',
-        url: `${getFrontendBase(req)}/register?product=${product.id}`,
-        message: 'Stripe not configured. Redirecting to signup as a fallback.'
-      });
-    }
-
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price: product.stripePriceId || undefined,
-        price_data: product.stripePriceId ? undefined : {
-          currency: 'usd',
-          product_data: {
-            name: product.name,
-            description: product.description
-          },
-          unit_amount: product.amount,
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      success_url: success,
-      cancel_url: cancel,
-      metadata: {
-        product_id: product.id,
-        product_name: product.name
-      }
-    });
-
-    res.json({ sessionId: session.id, url: session.url });
-  } catch (error) {
-    console.error('Error creating one-time checkout session:', error);
-    res.status(500).json({ error: 'Failed to create checkout session' });
+router.post('/create-one-time-checkout-session', asyncHandler(async (req, res) => {
+  // Rate limiting
+  const clientId = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  if (!checkRateLimit(clientId)) {
+    return errorResponse(res, 429, 'Too many requests. Please try again later.');
   }
-});
+
+  // Validation
+  const validation = validateOneTimeRequest(req);
+  if (!validation.valid) {
+    return errorResponse(res, 400, 'Validation failed', { errors: validation.errors });
+  }
+
+  const { productId, successUrl, cancelUrl } = req.body;
+  const product = ONE_TIME_PRODUCTS[productId];
+
+  if (!product) {
+    return errorResponse(res, 400, 'Invalid product ID');
+  }
+
+  const success = successUrl || `${getFrontendBase(req)}/payment/success?session_id={CHECKOUT_SESSION_ID}`;
+  const cancel = cancelUrl || `${getFrontendBase(req)}/payment/cancel`;
+
+  if (!stripe) {
+    return res.json({
+      mode: 'simulated',
+      url: `${getFrontendBase(req)}/register?product=${product.id}`,
+      message: 'Stripe not configured. Redirecting to signup as a fallback.'
+    });
+  }
+
+  // Build comprehensive metadata
+  const metadata = buildMetadata(product, {
+    created_by: 'checkout_api',
+    product_type: 'one_time',
+    user_ip: clientId,
+    user_agent: req.headers['user-agent'],
+    ...sanitizeMetadata(req.body.metadata || {})
+  });
+
+  // Create checkout session
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: [{
+      price: product.stripePriceId || undefined,
+      price_data: product.stripePriceId ? undefined : {
+        currency: 'usd',
+        product_data: {
+          name: product.name,
+          description: product.description
+        },
+        unit_amount: product.amount,
+      },
+      quantity: 1,
+    }],
+    mode: 'payment',
+    success_url: success,
+    cancel_url: cancel,
+    metadata: metadata,
+    customer_creation: 'always',
+    billing_address_collection: 'required'
+  });
+
+  return successResponse(res, { sessionId: session.id, url: session.url });
+}));
 
 // Create Payment Link
 router.post('/create-payment-link', async (req, res) => {
@@ -265,49 +313,56 @@ router.post('/create-payment-link', async (req, res) => {
 });
 
 // Create Subscription
-router.post('/create-subscription', async (req, res) => {
-  try {
-    const { priceId, customerEmail, metadata = {} } = req.body;
-
-    if (!stripe) {
-      return res.status(500).json({ error: 'Stripe not configured' });
-    }
-
-    // Create or get customer
-    let customer;
-    const existingCustomers = await stripe.customers.list({
-      email: customerEmail,
-      limit: 1
-    });
-
-    if (existingCustomers.data.length > 0) {
-      customer = existingCustomers.data[0];
-    } else {
-      customer = await stripe.customers.create({
-        email: customerEmail,
-        metadata: {
-          created_by: 'api',
-          ...metadata
-        }
-      });
-    }
-
-    // Create subscription
-    const subscription = await stripe.subscriptions.create({
-      customer: customer.id,
-      items: [{ price: priceId }],
-      metadata: {
-        created_by: 'api',
-        ...metadata
-      }
-    });
-
-    res.json({ subscriptionId: subscription.id });
-  } catch (error) {
-    console.error('Error creating subscription:', error);
-    res.status(500).json({ error: 'Failed to create subscription' });
+router.post('/create-subscription', asyncHandler(async (req, res) => {
+  // Validation
+  const validation = validateSubscriptionRequest(req);
+  if (!validation.valid) {
+    return errorResponse(res, 400, 'Validation failed', { errors: validation.errors });
   }
-});
+
+  if (!stripe) {
+    return errorResponse(res, 500, 'Stripe not configured');
+  }
+
+  const { priceId, customerEmail, metadata = {} } = req.body;
+
+  // Create or get customer
+  let customer;
+  const existingCustomers = await stripe.customers.list({
+    email: customerEmail,
+    limit: 1
+  });
+
+  if (existingCustomers.data.length > 0) {
+    customer = existingCustomers.data[0];
+  } else {
+    customer = await stripe.customers.create({
+      email: customerEmail,
+      metadata: buildMetadata({ id: 'customer', name: 'Customer' }, {
+        created_by: 'api',
+        ...sanitizeMetadata(metadata)
+      })
+    });
+  }
+
+  // Build subscription metadata
+  const subscriptionMetadata = buildMetadata({ id: 'subscription', name: 'Subscription' }, {
+    created_by: 'api',
+    customer_id: customer.id,
+    customer_email: customerEmail,
+    ...sanitizeMetadata(metadata)
+  });
+
+  // Create subscription
+  const subscription = await stripe.subscriptions.create({
+    customer: customer.id,
+    items: [{ price: priceId }],
+    metadata: subscriptionMetadata,
+    expand: ['latest_invoice.payment_intent'] // Expand for better error handling
+  });
+
+  return successResponse(res, { subscriptionId: subscription.id, customerId: customer.id });
+}));
 
 // Create Portal Session
 router.post('/create-portal-session', async (req, res) => {
