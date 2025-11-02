@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const stripe = require('stripe')('sk_test_51RvdYuQSGViadIU5ElNy1cnw4VeAHfi5dgvWjVbpjWwAyssSmfJONci8b8Ph1Od5fNNCjPro6g7ArRWxEFHrkuNS00k4iFnV4C');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Payment configuration endpoints (moved to top for Railway compatibility)
 router.get('/config', (req, res) => {
