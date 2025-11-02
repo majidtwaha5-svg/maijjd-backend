@@ -1,3 +1,4 @@
+// Force Railway rebuild - 20251101_234953
 const express = require('express');
 const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
