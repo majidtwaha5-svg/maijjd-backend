@@ -93,6 +93,23 @@ const userSchema = new mongoose.Schema({
     status: { type: String, default: 'active' },
     nextBillingDate: Date
   },
+  billingSettings: {
+    emailNotifications: { type: Boolean, default: true },
+    autoRenewal: { type: Boolean, default: true },
+    invoiceDelivery: { type: String, default: 'email' },
+    currency: { type: String, default: 'USD' },
+    taxRate: { type: Number, default: 0.0825 },
+    taxExempt: { type: Boolean, default: false },
+    taxId: { type: String, default: '' },
+    billingAddress: {
+      company: { type: String, default: '' },
+      address: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      zip: { type: String, default: '' },
+      country: { type: String, default: 'USA' }
+    }
+  },
   apiKeys: [{
     key: String,
     name: String,

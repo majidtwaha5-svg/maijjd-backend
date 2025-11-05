@@ -137,16 +137,18 @@ const softwareDataSchema = Joi.object({
   }).default({})
 });
 
-// Enhanced user validation
+// Enhanced user validation - email OR phone required
 const userRegistrationSchema = Joi.object({
   name: Joi.string().min(2).max(50).required().messages({
     'string.empty': 'Name is required',
     'string.min': 'Name must be at least 2 characters',
     'string.max': 'Name must not exceed 50 characters'
   }),
-  email: Joi.string().email().required().messages({
-    'string.empty': 'Email is required',
+  email: Joi.string().email().optional().messages({
     'string.email': 'Email must be a valid email address'
+  }),
+  phone: Joi.string().pattern(/^\+?[\d\s\-\(\)]+$/).optional().messages({
+    'string.pattern.base': 'Phone number must be in a valid format'
   }),
   password: Joi.string().min(8).pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/).required().messages({
     'string.empty': 'Password is required',
@@ -159,6 +161,14 @@ const userRegistrationSchema = Joi.object({
   ai_access_level: Joi.string().valid('basic', 'standard', 'advanced', 'full').default('standard').messages({
     'any.only': 'AI access level must be one of: basic, standard, advanced, full'
   })
+}).custom((value, helpers) => {
+  // Require either email or phone
+  if (!value.email && !value.phone) {
+    return helpers.error('any.custom', {
+      message: 'Either email or phone number is required'
+    });
+  }
+  return value;
 });
 
 const userLoginSchema = Joi.object({
@@ -348,6 +358,19 @@ const validateSoftwareData = (req, res, next) => {
 };
 
 const validateUserRegistration = (req, res, next) => {
+  // Check for either email or phone before validation
+  if (!req.body.email && !req.body.phone) {
+    return res.status(400).json({
+      error: 'User registration validation failed',
+      message: 'Either email or phone number is required',
+      errors: [{
+        field: 'email',
+        message: 'Either email or phone number is required',
+        code: 'any.custom'
+      }]
+    });
+  }
+  
   const { error, value } = userRegistrationSchema.validate(req.body, { abortEarly: false });
   if (error) {
     return res.status(400).json({

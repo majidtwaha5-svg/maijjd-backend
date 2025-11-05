@@ -48,6 +48,88 @@ router.get('/users', adminAuth, async (req, res) => {
   }
 });
 
+// Create new user
+router.post('/users', adminAuth, async (req, res) => {
+  try {
+    const { name, email, role, subscription, password } = req.body;
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'User with this email already exists' });
+    }
+
+    // Generate password if not provided
+    const userPassword = password || generateSecurePassword();
+    
+    const user = new User({
+      name,
+      email,
+      password: userPassword,
+      role: role || 'user',
+      subscription: subscription || 'free',
+      status: 'active',
+      emailVerified: true
+    });
+
+    await user.save();
+
+    res.json({ 
+      success: true, 
+      message: 'User created successfully',
+      data: user.toJSON(),
+      password: userPassword // Only return in admin context
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Update user
+router.put('/users/:userId', adminAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const updateData = req.body;
+    
+    // Remove password from update if present (use separate endpoint for password reset)
+    delete updateData.password;
+    
+    const user = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true, runValidators: true }
+    ).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({ success: true, message: 'User updated successfully', data: user });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Delete user
+router.delete('/users/:userId', adminAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const user = await User.findByIdAndDelete(userId);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // Get user by ID
 router.get('/users/:userId', adminAuth, async (req, res) => {
   try {
@@ -100,6 +182,26 @@ router.post('/users/:userId/reset-password', adminAuth, async (req, res) => {
 
 // Update user status
 router.patch('/users/:userId/status', adminAuth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const user = await User.findById(req.params.userId);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.status = status;
+    await user.save();
+
+    res.json({ success: true, message: 'User status updated successfully' });
+  } catch (error) {
+    console.error('Error updating user status:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Update user status (alternative PUT endpoint)
+router.put('/users/:userId/status', adminAuth, async (req, res) => {
   try {
     const { status } = req.body;
     const user = await User.findById(req.params.userId);

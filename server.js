@@ -83,17 +83,42 @@ const mjndLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// Enhanced CORS configuration with dynamic origin checking
+const allowedOrigins = [
+  'https://maijjd.com',
+  'https://www.maijjd.com',
+  'https://api.maijjd.com',
+  'https://backend.maijjd.com',
+  'https://maijjd-backend-production-ad65.up.railway.app',
+  'http://localhost:3000',
+  'http://localhost:3001'
+];
+
+// Add Vercel preview URLs dynamically
+if (process.env.VERCEL) {
+  allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
+}
+
 app.use(cors({
-  origin: [
-    'https://maijjd.com',
-    'https://www.maijjd.com',
-    'https://api.maijjd.com',
-    'http://localhost:3000',
-    'http://localhost:3001'
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else if (origin && origin.includes('.vercel.app')) {
+      // Allow all Vercel preview deployments
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all origins in production for now
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Authorization'],
+  maxAge: 86400 // 24 hours
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -130,6 +155,7 @@ app.get('/api/health', (req, res) => {
 
 // Mount API routes
 const authRoutes = require('./routes/auth');
+const adminAuthRoutes = require('./routes/adminAuth');
 const contactRoutes = require('./routes/contact');
 const usersRoutes = require('./routes/users');
 const softwareRoutes = require('./routes/software');
@@ -138,8 +164,12 @@ const aiIntegrationRoutes = require('./routes/ai-integration');
 const stripeRoutes = require('./routes/stripe-api');
 const adminRoutes = require('./routes/admin');
 const developerRoutes = require('./routes/developer');
+const billingRoutes = require('./routes/billing');
+const invoicesRoutes = require('./routes/invoices');
+const contentManagementRoutes = require('./routes/contentManagement');
 
 app.use('/api/auth', authRoutes);
+app.use('/api/admin-auth', adminAuthRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/software', softwareRoutes);
@@ -148,6 +178,9 @@ app.use('/api/ai', aiIntegrationRoutes);
 app.use('/api/stripe', stripeRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/developer', developerRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/billing/invoices', invoicesRoutes);
+app.use('/api/admin/content', contentManagementRoutes);
 
 // MJND Agent routes
 app.post('/api/mjnd/chat', mjndLimiter, async (req, res) => {

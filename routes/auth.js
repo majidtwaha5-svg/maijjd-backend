@@ -252,15 +252,41 @@ router.post('/register', validateUserRegistration, async (req, res) => {
     const { name, email, password, phone } = validatedData;
     const { confirmPassword } = req.body; // Keep confirmPassword from body for comparison
     
-    // Enhanced email validation (additional check)
-    const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
-    if (!emailRegex.test(email)) {
+    // Require either email or phone
+    if (!email && !phone) {
       return res.status(400).json({
         error: 'Validation Error',
-        message: 'Please enter a valid email address',
+        message: 'Either email or phone number is required',
         code: 'VALIDATION_ERROR',
         timestamp: new Date().toISOString()
       });
+    }
+    
+    // Validate email if provided
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Please enter a valid email address',
+          code: 'VALIDATION_ERROR',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    
+    // Validate phone if provided
+    if (phone) {
+      const phoneRegex = /^(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$|^\+?[1-9]\d{1,14}$/;
+      const cleaned = phone.trim().replace(/[\s\-\(\)\.]/g, '');
+      if (cleaned.length < 10 || !phoneRegex.test(phone.trim())) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Please enter a valid phone number (e.g., +1234567890 or (123) 456-7890)',
+          code: 'VALIDATION_ERROR',
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     if (password.length < 8) {
@@ -292,10 +318,15 @@ router.post('/register', validateUserRegistration, async (req, res) => {
       });
     }
 
-    // Check if user already exists
+    // Check if user already exists by email or phone
     let existingUser;
     try {
-      existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (email) {
+        existingUser = await User.findOne({ email: email.toLowerCase() });
+      }
+      if (!existingUser && phone) {
+        existingUser = await User.findOne({ phone: phone.trim() });
+      }
     } catch (dbError) {
       console.error('Database error during registration check:', dbError);
       console.log('🔧 Database unavailable, allowing registration with temporary user');
@@ -305,7 +336,7 @@ router.post('/register', validateUserRegistration, async (req, res) => {
     if (existingUser) {
       return res.status(409).json({
         error: 'User Already Exists',
-        message: 'A user with this email already exists',
+        message: existingUser.email ? 'A user with this email already exists' : 'A user with this phone number already exists',
         code: 'USER_EXISTS',
         timestamp: new Date().toISOString()
       });
@@ -316,7 +347,7 @@ router.post('/register', validateUserRegistration, async (req, res) => {
     try {
       newUser = new User({
         name: name.trim(),
-        email: email.toLowerCase(),
+        email: email ? email.toLowerCase() : undefined,
         password,
         phone: phone ? phone.trim() : undefined,
         role: 'user',
@@ -328,6 +359,75 @@ router.post('/register', validateUserRegistration, async (req, res) => {
 
       await newUser.save();
       console.log('✅ User created successfully in database');
+      
+      // Automatically send verification codes after registration
+      try {
+        if (email) {
+          // Generate and send email verification code
+          const { code: emailCode, expiresAt: emailExpiresAt } = newUser.generateVerificationCode('email');
+          await newUser.save();
+          
+          // Send verification email
+          const emailService = new EmailService();
+          await emailService.sendEmail(
+            email,
+            'Verify Your Maijjd Account',
+            `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 28px;">Maijjd Account Verification</h1>
+                </div>
+                
+                <div style="padding: 30px; background: #f8f9fa;">
+                  <h2 style="color: #333; margin-bottom: 20px;">Verify Your Email Address</h2>
+                  
+                  <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+                    Hi ${name.trim()},
+                  </p>
+                  
+                  <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+                    Welcome to Maijjd! Please use the following verification code to complete your account setup:
+                  </p>
+                  
+                  <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+                    <h3 style="color: #333; margin: 0; font-size: 32px; letter-spacing: 5px;">${emailCode}</h3>
+                  </div>
+                  
+                  <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+                    This code will expire in 10 minutes. If you didn't create this account, please ignore this email.
+                  </p>
+                  
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${process.env.FRONTEND_BASE_URL || 'https://maijjd.com'}/verify-email?email=${encodeURIComponent(email)}&code=${emailCode}" 
+                       style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                      Verify Email Address
+                    </a>
+                  </div>
+                </div>
+              </div>
+            `
+          );
+          console.log(`✅ Verification email sent to ${email}`);
+        }
+        
+        if (phone) {
+          // Generate and send phone verification code
+          const { code: phoneCode, expiresAt: phoneExpiresAt } = newUser.generateVerificationCode('phone');
+          await newUser.save();
+          
+          // Send verification SMS
+          if (TwilioService.isConfigured()) {
+            await TwilioService.sendVerificationCode(phone, phoneCode);
+            console.log(`✅ Verification SMS sent to ${phone}`);
+          } else {
+            console.log(`[SMS:FALLBACK] Verification code for ${phone}: ${phoneCode}`);
+          }
+        }
+      } catch (verificationError) {
+        console.error('⚠️ Failed to send verification codes:', verificationError);
+        // Don't fail registration if verification sending fails
+      }
+      
     } catch (dbError) {
       console.error('Database error during user creation:', dbError);
       console.log('🔧 Database unavailable, creating temporary user for demo');
@@ -335,11 +435,13 @@ router.post('/register', validateUserRegistration, async (req, res) => {
       newUser = {
         _id: 'temp-user-' + Date.now(),
         name: name.trim(),
-        email: email.toLowerCase(),
+        email: email ? email.toLowerCase() : undefined,
+        phone: phone ? phone.trim() : undefined,
         role: 'user',
         status: 'active',
         subscription: 'free',
         emailVerified: false,
+        phoneVerified: false,
         createdAt: new Date(),
         // Add methods that might be called later
         save: async () => {},
@@ -359,7 +461,10 @@ router.post('/register', validateUserRegistration, async (req, res) => {
           id: newUser._id || newUser.id,
           name: newUser.name,
           email: newUser.email,
+          phone: newUser.phone,
           role: newUser.role,
+          emailVerified: newUser.emailVerified || false,
+          phoneVerified: newUser.phoneVerified || false,
           permissions: ['read', 'write', 'user'],
           createdAt: newUser.createdAt || new Date()
         },
@@ -728,7 +833,7 @@ router.post('/forgot', async (req, res) => {
 
 router.post('/reset', async (req, res) => {
   try {
-    const { token, password } = req.body || {};
+    const { token, password, confirmPassword } = req.body || {};
     
     if (!token || !password) {
       return res.status(400).json({ 
@@ -743,6 +848,27 @@ router.post('/reset', async (req, res) => {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Password must be at least 8 characters long',
+        code: 'VALIDATION_ERROR',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Enhanced password validation (same as registration)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+        code: 'VALIDATION_ERROR',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Validate confirmPassword if provided
+    if (confirmPassword && password !== confirmPassword) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Password confirmation does not match password',
         code: 'VALIDATION_ERROR',
         timestamp: new Date().toISOString()
       });
@@ -771,10 +897,14 @@ router.post('/reset', async (req, res) => {
       });
     }
 
-    // Find user by email
+    // Find user by email or phone
     let user;
     try {
-      user = await User.findOne({ email: entry.email.toLowerCase() });
+      if (entry.email) {
+        user = await User.findOne({ email: entry.email.toLowerCase() });
+      } else if (entry.phone) {
+        user = await User.findOne({ phone: entry.phone });
+      }
     } catch (dbError) {
       console.error('Database error during password reset:', dbError);
       return res.status(500).json({
@@ -801,7 +931,7 @@ router.post('/reset', async (req, res) => {
       await user.save();
       passwordResetTokens.delete(token);
       
-      console.log(`✅ Password reset successful for user: ${user.email}`);
+      console.log(`✅ Password reset successful for user: ${user.email || user.phone}`);
       
       res.json({ 
         success: true,
@@ -1174,11 +1304,32 @@ router.post('/forgot-password', async (req, res) => {
       });
     }
 
+    // Validate input format before database query
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Please enter a valid email address',
+        code: 'VALIDATION_ERROR'
+      });
+    }
+    
+    if (phone) {
+      const phoneRegex = /^(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$|^\+?[1-9]\d{1,14}$/;
+      const cleaned = phone.trim().replace(/[\s\-\(\)\.]/g, '');
+      if (cleaned.length < 10 || !phoneRegex.test(phone.trim())) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Please enter a valid phone number',
+          code: 'VALIDATION_ERROR'
+        });
+      }
+    }
+
     let user;
     if (email) {
-      user = await User.findOne({ email: email.toLowerCase() });
+      user = await User.findOne({ email: email.toLowerCase().trim() });
     } else if (phone) {
-      user = await User.findOne({ phone: phone });
+      user = await User.findOne({ phone: phone.trim() });
     }
 
     if (!user) {
